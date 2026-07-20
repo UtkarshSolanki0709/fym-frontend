@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /*
+      FYM brand — "night market paper"
+      Away from Tinder coral/pink. Linen paper, deep navy ink, amber spark.
+      --fym-coral token name kept for class compat; value is brand amber.
+    */
+    --background: 40 33% 94%; /* linen #F3EFE6 */
+    --foreground: 220 45% 12%; /* deep navy ink */
+    --card: 40 40% 98%;
+    --card-foreground: 220 45% 12%;
+    --popover: 40 40% 98%;
+    --popover-foreground: 220 45% 12%;
+    --primary: 38 88% 52%; /* amber spark #F0A020 */
+    --primary-foreground: 220 45% 10%;
+    --secondary: 40 25% 92%;
+    --secondary-foreground: 220 45% 12%;
+    --muted: 40 18% 90%;
+    --muted-foreground: 220 12% 42%;
+    --accent: 174 28% 88%; /* soft teal wash */
+    --accent-foreground: 220 45% 12%;
+    --destructive: 0 72% 48%;
+    --border: 40 14% 82%;
+    --input: 40 14% 82%;
+    --ring: 38 88% 52%;
+    --radius: 1rem;
+
+    /* Brand slots */
+    --fym-coral: 38 88% 52%; /* brand amber (legacy token name) */
+    --fym-mint: 174 32% 88%;
+    --fym-gold: 42 70% 88%;
+    --fym-surface: 40 33% 94%;
+    --fym-cream: 40 40% 98%;
+    --fym-ink: 220 45% 12%;
+    --fym-text: 220 40% 14%;
+    --fym-text-muted: 220 12% 42%;
+    --fym-pastel-pink: 18 45% 93%; /* warm clay, not dating-app pink */
+    --fym-pastel-blue: 210 28% 92%;
+    --fym-pastel-lavender: 250 22% 93%;
+    --fym-pastel-yellow: 42 55% 91%;
+    --fym-pastel-green: 160 28% 91%;
+  }
+}
