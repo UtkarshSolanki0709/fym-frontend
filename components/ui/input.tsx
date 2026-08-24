@@ -28,6 +28,7 @@ function Input({
         </Text>
       ) : null}
       <TextInput
+        accessibilityLabel={label}
         placeholderTextColor="#79776E"
         className={cn(
           'rounded-card border bg-white px-4 py-3.5 font-jakarta text-base text-fym-text text-left',

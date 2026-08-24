@@ -1,230 +1,236 @@
+import { ScreenEnter } from '@/components/motion';
 import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
+import { getMatches } from '@/lib/api/client';
+import { decryptPreview, ensurePublishedKeys } from '@/lib/chat/useChat';
+import type { MatchRow } from '@/lib/chat/types';
 import { cn } from '@/lib/utils';
 import { Image } from 'expo-image';
+import { router, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Settings, Zap } from 'lucide-react-native';
-import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const MATCHES = [
-  { name: 'Alex', uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80', online: true },
-  { name: 'Jordan', uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80', online: true },
-  { name: 'Sam', uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80', online: false },
-  { name: 'Casey', uri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80', online: false },
-];
-
-type ConvStatus = 'active' | 'unread' | 'read';
-
-const CONVOS: {
-  name: string;
-  preview: string;
-  uri: string;
-  time: string;
-  status: ConvStatus;
-  online: boolean;
-}[] = [
-  {
-    name: 'Taylor',
-    preview: "Let's meet up at the new gallery tonight!",
-    uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
-    time: 'Just now',
-    status: 'active',
-    online: true,
-  },
-  {
-    name: 'Morgan',
-    preview: 'Did you see that post I sent?',
-    uri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
-    time: '2h ago',
-    status: 'unread',
-    online: true,
-  },
-  {
-    name: 'Riley',
-    preview: 'Yeah, that sounds like a plan.',
-    uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
-    time: 'Yesterday',
-    status: 'read',
-    online: false,
-  },
-  {
-    name: 'Quinn',
-    preview: 'Haha 😂',
-    uri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80',
-    time: 'Mon',
-    status: 'read',
-    online: false,
-  },
-];
+const INK = '#14213D';
 
 const shadowStyle = {
-  shadowColor: '#14213D',
+  shadowColor: INK,
   shadowOffset: { width: 3, height: 3 },
   shadowOpacity: 1,
   shadowRadius: 0,
   elevation: 3,
 } as const;
 
+function isOnline(last: string | null): boolean {
+  if (!last) return false;
+  return Date.now() - new Date(last).getTime() < 5 * 60 * 1000;
+}
+
 export default function MatchesScreen() {
   const insets = useSafeAreaInsets();
-  const [pressedMatch, setPressedMatch] = useState<string | null>(null);
-  const [pressedConv, setPressedConv] = useState<string | null>(null);
+  const [matches, setMatches] = useState<MatchRow[]>([]);
+  const [previews, setPreviews] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      await ensurePublishedKeys().catch(() => undefined);
+      const { matches: rows } = await getMatches();
+      setMatches(rows);
+      const map: Record<string, string> = {};
+      await Promise.all(
+        rows.map(async (m) => {
+          if (!m.last_message) {
+            map[m.room_id] = 'Say hi';
+            return;
+          }
+          map[m.room_id] = await decryptPreview(
+            m.peer.id,
+            m.room_id,
+            m.last_message.ciphertext,
+            m.last_message.nonce,
+          );
+        }),
+      );
+      setPreviews(map);
+    } catch {
+      // keep previous
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const newMatches = matches.filter((m) => !m.last_message);
+  const convos = matches.filter((m) => m.last_message);
+
+  const open = (m: MatchRow) => {
+    router.push({
+      pathname: '/chat/[roomId]',
+      params: {
+        roomId: m.room_id,
+        peerId: m.peer.id,
+        name: m.peer.display_name,
+      },
+    } as Href);
+  };
 
   return (
     <View className="flex-1 bg-fym-surface">
       <StatusBar style="dark" />
-
       <View
         className="flex-row items-center justify-between border-b-brutal border-fym-ink bg-fym-surface px-gutter"
         style={{ paddingTop: insets.top, paddingBottom: 8 }}
       >
-        <Pressable className="p-2 active:translate-x-[1px] active:translate-y-[1px]">
-          <Zap size={24} color="#14213D" />
+        <Pressable
+          onPress={() => router.push('/(tabs)/discovery' as Href)}
+          className="p-2"
+        >
+          <Zap size={24} color={INK} />
         </Pressable>
         <Text className="font-display-extrabold text-2xl uppercase tracking-tighter text-fym-ink">
-          FYM
+          Chat
         </Text>
-        <Pressable className="p-2 active:translate-x-[1px] active:translate-y-[1px]">
-          <Settings size={24} color="#14213D" />
+        <Pressable onPress={() => router.push('/settings' as Href)} className="p-2">
+          <Settings size={24} color={INK} />
         </Pressable>
       </View>
 
-      <ScrollView
-        contentContainerClassName="px-gutter pb-36"
-        showsVerticalScrollIndicator={false}
-      >
-        <View className="mt-6">
-          <Text className="border-b-2 border-fym-ink pb-1 font-jakarta-extrabold text-[11px] uppercase tracking-[2px] text-fym-brand">
-            New Matches
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="-mx-gutter mt-3"
-            contentContainerClassName="px-gutter gap-6 pb-3"
-          >
-            {MATCHES.map((m) => {
-              const isPressed = pressedMatch === m.name;
-              return (
-                <Pressable
-                  key={m.name}
-                  onPressIn={() => setPressedMatch(m.name)}
-                  onPressOut={() => setPressedMatch(null)}
-                  className="items-center"
-                  style={
-                    isPressed
-                      ? { transform: [{ translateX: 2 }, { translateY: 2 }] }
-                      : undefined
-                  }
-                >
-                  <View
-                    className="h-20 w-20 rounded-full"
-                    style={!isPressed ? shadowStyle : undefined}
-                  >
+      {loading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={INK} />
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerClassName="px-gutter pb-36"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                void load();
+              }}
+            />
+          }
+        >
+          <ScreenEnter variant="down" className="mt-6">
+            <Text className="border-b-2 border-fym-ink pb-1 font-jakarta-extrabold text-[11px] uppercase tracking-[2px] text-fym-brand">
+              New Matches
+            </Text>
+          </ScreenEnter>
+
+          {newMatches.length === 0 ? (
+            <Text className="mt-3 font-jakarta text-sm text-fym-text-muted">
+              Mutual likes show up here first.
+            </Text>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="-mx-gutter mt-3"
+              contentContainerClassName="px-gutter gap-6 pb-3"
+            >
+              {newMatches.map((m) => (
+                <Pressable key={m.room_id} onPress={() => open(m)} className="items-center">
+                  <View className="h-20 w-20 rounded-full" style={shadowStyle}>
                     <View className="h-full w-full overflow-hidden rounded-full border-brutal border-fym-ink">
-                      <Image
-                        source={{ uri: m.uri }}
-                        style={{ width: '100%', height: '100%' }}
-                        contentFit="cover"
-                      />
+                      {m.peer.photo_url ? (
+                        <Image
+                          source={{ uri: m.peer.photo_url }}
+                          style={{ width: '100%', height: '100%' }}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <View className="flex-1 bg-fym-pastel-lavender" />
+                      )}
                     </View>
-                    {m.online && (
+                    {isOnline(m.peer.last_active_at) ? (
                       <View className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-fym-ink bg-fym-mint" />
-                    )}
+                    ) : null}
                   </View>
                   <Text className="mt-1 font-jakarta-bold text-xs text-fym-ink">
-                    {m.name}
+                    {m.peer.display_name}
                   </Text>
                 </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
+              ))}
+            </ScrollView>
+          )}
 
-        <View className="mt-10">
-          <Text className="border-b-2 border-fym-ink pb-1 font-jakarta-extrabold text-[11px] uppercase tracking-[2px] text-fym-brand">
-            Conversations
-          </Text>
-          <View className="mt-3 gap-6">
-            {CONVOS.map((c) => {
-              const isPressed = pressedConv === c.name;
-              const isRead = c.status === 'read';
+          <ScreenEnter variant="down" delayIndex={1} className="mt-10">
+            <Text className="border-b-2 border-fym-ink pb-1 font-jakarta-extrabold text-[11px] uppercase tracking-[2px] text-fym-brand">
+              Conversations
+            </Text>
+          </ScreenEnter>
 
-              return (
-                <Pressable
-                  key={c.name}
-                  onPressIn={() => setPressedConv(c.name)}
-                  onPressOut={() => setPressedConv(null)}
-                >
+          <View className="mt-3 gap-4">
+            {convos.length === 0 ? (
+              <Text className="font-jakarta text-sm text-fym-text-muted">
+                When you match, chats show up here.
+              </Text>
+            ) : (
+              convos.map((m) => (
+                <Pressable key={m.room_id} onPress={() => open(m)}>
                   <Card
                     brutal
-                    sunk={isPressed}
-                    reverse={c.status === 'unread'}
-                    contentClassName={cn(
-                      'flex-row items-center gap-3 p-3',
-                      c.status === 'active' && 'bg-fym-cream',
-                      isRead && 'opacity-70'
-                    )}
+                    reverse={m.unread > 0}
+                    contentClassName="flex-row items-center gap-3 p-3"
                   >
-                    {c.status === 'active' && (
-                      <View className="absolute -right-3 -top-3 h-10 w-10 rounded-full border-brutal border-fym-ink bg-fym-mint" />
-                    )}
-                    <View className="relative z-10 flex-row items-center gap-3">
-                      <View className="relative h-16 w-16 flex-shrink-0">
-                        <View
-                          className={cn(
-                            'h-full w-full overflow-hidden rounded-full border-2 border-fym-ink',
-                            isRead && 'grayscale'
-                          )}
-                        >
-                          <Image
-                            source={{ uri: c.uri }}
-                            style={{ width: '100%', height: '100%' }}
-                            contentFit="cover"
-                          />
-                        </View>
-                        {c.online && (
-                          <View className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border border-fym-ink bg-fym-mint" />
-                        )}
-                      </View>
-                      <View className="flex-1">
-                        <View className="mb-0.5 flex-row items-center justify-between">
-                          <View className="flex-row items-center gap-1.5">
-                            <Text className="font-jakarta-bold text-sm text-fym-ink">
-                              {c.name}
-                            </Text>
-                            {c.status === 'unread' && (
-                              <View className="h-2 w-2 rounded-full border border-fym-ink bg-fym-mint" />
-                            )}
-                          </View>
-                          <Text className="font-jakarta-semibold text-[10px] text-fym-text-muted">
-                            {c.time}
-                          </Text>
-                        </View>
-                        <Text
-                          className={cn(
-                            'text-sm',
-                            c.status === 'unread'
-                              ? 'font-jakarta-bold text-fym-ink'
-                              : 'font-jakarta text-fym-text-muted'
-                          )}
-                          numberOfLines={1}
-                        >
-                          {c.preview}
+                    <View className="h-14 w-14 overflow-hidden rounded-full border-brutal border-fym-ink">
+                      {m.peer.photo_url ? (
+                        <Image
+                          source={{ uri: m.peer.photo_url }}
+                          style={{ width: '100%', height: '100%' }}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <View className="flex-1 bg-fym-pastel-blue" />
+                      )}
+                    </View>
+                    <View className="min-w-0 flex-1">
+                      <View className="flex-row items-center justify-between">
+                        <Text className="font-jakarta-bold text-sm text-fym-ink">
+                          {m.peer.display_name}
                         </Text>
+                        {m.unread > 0 ? (
+                          <View className="rounded-full bg-fym-coral px-2 py-0.5">
+                            <Text className="font-jakarta-bold text-[10px] text-white">
+                              {m.unread}
+                            </Text>
+                          </View>
+                        ) : null}
                       </View>
+                      <Text
+                        className={cn(
+                          'mt-0.5 text-sm',
+                          m.unread > 0
+                            ? 'font-jakarta-bold text-fym-ink'
+                            : 'font-jakarta text-fym-text-muted',
+                        )}
+                        numberOfLines={1}
+                      >
+                        {previews[m.room_id] ?? '…'}
+                      </Text>
                     </View>
                   </Card>
                 </Pressable>
-              );
-            })}
+              ))
+            )}
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      )}
     </View>
   );
 }
-
-

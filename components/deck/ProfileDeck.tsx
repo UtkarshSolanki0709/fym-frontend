@@ -1,3 +1,4 @@
+import { ActionPulse } from '@/components/motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,8 +11,8 @@ import {
   type MockProfile,
   type ProfileCard,
 } from '@/lib/mock/profiles';
+import { EASE, Enter, MS, TIMING_SHARP } from '@/lib/motion';
 import { playFlipSfx, playShuffleSfx, playSkipRevealSfx } from '@/lib/sfx';
-import { cn } from '@/lib/utils';
 import { Image } from 'expo-image';
 import { X } from 'lucide-react-native';
 import * as React from 'react';
@@ -24,10 +25,7 @@ import {
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Easing,
   Extrapolation,
-  FadeIn,
-  FadeOut,
   interpolate,
   runOnJS,
   useAnimatedStyle,
@@ -35,6 +33,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 const SKIP_PULL = 72;
 const SKIP_SNAP = 96;
@@ -63,6 +62,8 @@ function ProfileDeck({
   const [comment, setComment] = React.useState('');
   const [success, setSuccess] = React.useState<'like' | 'super' | null>(null);
   const [skipArmed, setSkipArmed] = React.useState(false);
+  const reduced = useReducedMotion();
+  const pendingAction = React.useRef<{ kind: 'like' | 'super'; text?: string } | null>(null);
 
   const pullY = useSharedValue(0);
   const dealFlash = useSharedValue(0);
@@ -91,18 +92,18 @@ function ProfileDeck({
       await playShuffleSfx();
       setHand(buildShuffledHand(profile).map((h) => ({ ...h, revealed: false })));
       dealFlash.value = withSequence(
-        withTiming(1, { duration: 80, easing: Easing.out(Easing.quad) }),
-        withTiming(0, { duration: 120, easing: Easing.in(Easing.quad) })
+        withTiming(1, TIMING_SHARP),
+        withTiming(0, { duration: 120, easing: EASE.outQuad })
       );
       return;
     }
     await playShuffleSfx();
     setHand(buildShuffledHand(profile));
     setDealt(true);
-    dealtSV.value = withTiming(1, { duration: 140, easing: Easing.out(Easing.quad) });
+    dealtSV.value = withTiming(1, TIMING_SHARP);
     dealFlash.value = withSequence(
-      withTiming(1, { duration: 90, easing: Easing.linear }),
-      withTiming(0, { duration: 140, easing: Easing.out(Easing.quad) })
+      withTiming(1, { duration: 90, easing: EASE.linear }),
+      withTiming(0, TIMING_SHARP)
     );
   }, [dealt, profile, dealFlash, dealtSV]);
 
@@ -135,13 +136,10 @@ function ProfileDeck({
     })
     .onEnd(() => {
       if (pullY.value >= SKIP_PULL) {
-        pullY.value = withTiming(SKIP_SNAP, {
-          duration: 140,
-          easing: Easing.out(Easing.quad),
-        });
+        pullY.value = withTiming(SKIP_SNAP, TIMING_SHARP);
         runOnJS(armSkip)();
       } else {
-        pullY.value = withTiming(0, { duration: 160, easing: Easing.out(Easing.quad) });
+        pullY.value = withTiming(0, TIMING_SHARP);
         runOnJS(disarmSkip)();
       }
     });
@@ -182,19 +180,22 @@ function ProfileDeck({
   });
 
   const fireAction = (kind: 'like' | 'super') => {
+    pendingAction.current = { kind, text: comment.trim() || undefined };
+    setOpenCard(null);
     setSuccess(kind);
-    const text = comment.trim() || undefined;
-    setTimeout(() => {
-      if (kind === 'like') onLike(text);
-      else onSuperLike(text);
-      setOpenCard(null);
-      setComment('');
-      setSuccess(null);
-    }, 900);
   };
 
+  const onPulseDone = React.useCallback(() => {
+    const pending = pendingAction.current;
+    pendingAction.current = null;
+    if (pending?.kind === 'like') onLike(pending.text);
+    else if (pending?.kind === 'super') onSuperLike(pending.text);
+    setComment('');
+    setSuccess(null);
+  }, [onLike, onSuperLike]);
+
   const onSkipPress = () => {
-    pullY.value = withTiming(0, { duration: 120 });
+    pullY.value = withTiming(0, TIMING_SHARP);
     setSkipArmed(false);
     onPass();
   };
@@ -334,7 +335,10 @@ function ProfileDeck({
       <Modal visible={!!openCard && !success} animationType="fade" transparent>
         <View className="flex-1 justify-end bg-fym-ink/40">
           <Pressable className="flex-1" onPress={() => setOpenCard(null)} />
-          <View className="rounded-t-container border-t border-border bg-white px-edge pb-10 pt-4">
+          <Animated.View
+            entering={Enter.up(reduced)}
+            className="rounded-t-container border-t border-border bg-white px-edge pb-10 pt-4"
+          >
             <View className="mb-3 h-1.5 w-10 self-center rounded-pill bg-fym-text-muted/30" />
             {openCard ? <EnlargedBody card={openCard} /> : null}
             <Input
@@ -361,33 +365,21 @@ function ProfileDeck({
                 </Button>
               </View>
             </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
 
       <Modal visible={!!success} animationType="fade" transparent>
         <View className="flex-1 items-center justify-center bg-[#FAF7F4]/95">
-          <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut}>
-            <Shadow offset={8} className="rounded-card">
-              <View
-                className={cn(
-                  'items-center rounded-card border border-border px-12 py-10',
-                  success === 'super' ? 'bg-fym-gold' : 'bg-fym-coral'
-                )}
-              >
-                <Text className="text-6xl">{success === 'super' ? '♠' : '♥'}</Text>
-                <Text
-                  variant="h2"
-                  className={cn(
-                    'mt-3 uppercase',
-                    success === 'super' ? 'text-fym-ink' : 'text-white'
-                  )}
-                >
-                  {success === 'super' ? 'Spade sent' : 'Heart sent'}
-                </Text>
-              </View>
-            </Shadow>
-          </Animated.View>
+          <Shadow offset={8} className="rounded-card">
+            {success ? (
+              <ActionPulse
+                kind={success}
+                onDone={onPulseDone}
+                sublabel="Loading the next profile…"
+              />
+            ) : null}
+          </Shadow>
         </View>
       </Modal>
     </View>
@@ -411,7 +403,7 @@ function FlipCard({
 
   React.useEffect(() => {
     if (hand.revealed) {
-      flip.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
+      flip.value = withTiming(1, { duration: MS.ui, easing: EASE.out });
     } else {
       flip.value = 0;
     }

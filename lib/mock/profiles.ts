@@ -2,6 +2,7 @@ export type ProfileCard =
   | { type: 'media'; kind: 'photo' | 'video'; url: string; stamp?: string }
   | { type: 'prompt'; question: string; answer: string };
 
+/** @deprecated use DeckProfile from mapProfile — alias kept for deck */
 export type MockProfile = {
   id: string;
   displayName: string;
@@ -12,6 +13,8 @@ export type MockProfile = {
   media: Extract<ProfileCard, { type: 'media' }>[];
   prompts: Extract<ProfileCard, { type: 'prompt' }>[];
 };
+
+export type DeckProfile = MockProfile;
 
 /** Face-down hand entry after shuffle */
 export type HandCard = {

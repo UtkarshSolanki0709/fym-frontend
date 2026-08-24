@@ -23,6 +23,27 @@ export const THEME = {
     ring: 'hsl(38 88% 52%)',
     radius: '1rem',
   },
+  dark: {
+    background: 'hsl(220 20% 10%)',
+    foreground: 'hsl(40 10% 90%)',
+    card: 'hsl(220 20% 14%)',
+    cardForeground: 'hsl(40 10% 90%)',
+    popover: 'hsl(220 20% 14%)',
+    popoverForeground: 'hsl(40 10% 90%)',
+    primary: 'hsl(38 88% 52%)',
+    primaryForeground: 'hsl(220 45% 10%)',
+    secondary: 'hsl(220 15% 20%)',
+    secondaryForeground: 'hsl(40 10% 90%)',
+    muted: 'hsl(220 15% 18%)',
+    mutedForeground: 'hsl(40 10% 60%)',
+    accent: 'hsl(174 28% 25%)',
+    accentForeground: 'hsl(40 10% 90%)',
+    destructive: 'hsl(0 72% 48%)',
+    border: 'hsl(220 15% 22%)',
+    input: 'hsl(220 15% 22%)',
+    ring: 'hsl(38 88% 52%)',
+    radius: '1rem',
+  },
 };
 
 export const BRAND = {

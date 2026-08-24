@@ -3,14 +3,22 @@ import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 
-type State = { error: Error | null };
+type State = { error: Error | null; retryKey: number };
 
-export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, State> {
-  state: State = { error: null };
+export class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; onRetry?: () => void },
+  State
+> {
+  state: State = { error: null, retryKey: 0 };
 
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
+
+  handleRetry = () => {
+    this.setState((prev) => ({ error: null, retryKey: prev.retryKey + 1 }));
+    this.props.onRetry?.();
+  };
 
   render() {
     if (this.state.error) {
@@ -23,11 +31,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
             {this.state.error.message}
           </Text>
           <View className="mt-6">
-            <Button
-              onPress={() => {
-                this.setState({ error: null });
-              }}
-            >
+            <Button onPress={this.handleRetry}>
               <Text>Try again</Text>
             </Button>
           </View>

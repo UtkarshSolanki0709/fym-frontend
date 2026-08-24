@@ -8,6 +8,8 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: '#F3EFE6' },
+        animation: 'fade',
+        lazy: true,
       }}
     >
       <Tabs.Screen name="discovery" options={{ title: 'Home' }} />

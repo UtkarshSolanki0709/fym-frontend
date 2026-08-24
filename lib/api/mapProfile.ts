@@ -1,8 +1,20 @@
 import type { ApiDiscoveryProfile } from './client';
-import type { MockProfile, ProfileCard } from '@/lib/mock/profiles';
+import type { ProfileCard } from '@/lib/mock/profiles';
 
-/** Map Railway discovery card → deck shape */
-export function mapDiscoveryToDeck(p: ApiDiscoveryProfile): MockProfile {
+/** Deck profile shape (API or seed) */
+export type DeckProfile = {
+  id: string;
+  displayName: string;
+  age: number;
+  distanceKm: number;
+  vibe: string;
+  headUrl: string;
+  media: Extract<ProfileCard, { type: 'media' }>[];
+  prompts: Extract<ProfileCard, { type: 'prompt' }>[];
+};
+
+/** Map discovery card → deck */
+export function mapDiscoveryToDeck(p: ApiDiscoveryProfile): DeckProfile {
   const photos = Array.isArray(p.photos) ? p.photos : [];
   const urls = photos.map((x) => x?.url).filter(Boolean) as string[];
   const headUrl =
@@ -11,17 +23,16 @@ export function mapDiscoveryToDeck(p: ApiDiscoveryProfile): MockProfile {
 
   const media: Extract<ProfileCard, { type: 'media' }>[] = urls.slice(1).map((url) => ({
     type: 'media',
-    kind: 'photo',
+    kind: 'photo' as const,
     url,
   }));
-  // deck needs at least some media cards
   if (media.length === 0 && urls[0]) {
     media.push({ type: 'media', kind: 'photo', url: urls[0] });
   }
 
   const prompts: Extract<ProfileCard, { type: 'prompt' }>[] = (p.prompts ?? []).map(
     (pr) => ({
-      type: 'prompt',
+      type: 'prompt' as const,
       question: pr.question,
       answer: pr.answer,
     }),
@@ -30,7 +41,7 @@ export function mapDiscoveryToDeck(p: ApiDiscoveryProfile): MockProfile {
   return {
     id: p.id,
     displayName: p.display_name ?? 'Someone',
-    age: p.age ?? 0,
+    age: p.age ?? 18,
     distanceKm: p.distance_km ?? 0,
     vibe: p.vibe ?? p.bio ?? (p.interests ?? []).slice(0, 3).join(' · ') ?? '',
     headUrl,

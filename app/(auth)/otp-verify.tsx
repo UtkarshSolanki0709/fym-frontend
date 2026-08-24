@@ -1,12 +1,20 @@
-import { ApiError, getOnboardingStatus, sendOtp, verifyOtp } from '@/lib/api/client';
 import {
-  clearPendingPhone,
-  getPendingPhone,
-  setPendingPhone,
-} from '@/lib/api/pendingPhone';
-import { storageGet } from '@/lib/storage';
+  ApiError,
+  getOnboardingStatus,
+  sendEmailOtp,
+  sendOtp,
+  verifyEmailOtp,
+  verifyOtp,
+} from '@/lib/api/client';
+import {
+  clearPendingAuth,
+  getPendingAuth,
+  setPendingAuth,
+} from '@/lib/api/pendingAuth';
+import { loadUserProfile } from '@/lib/userProfile';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import { ensurePublishedKeys } from '@/lib/chat/useChat';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as React from 'react';
@@ -15,58 +23,72 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const LENGTH = 6;
 
-async function routeAfterOtp(intentHint?: string) {
-  const intent =
-    intentHint === 'signup' || intentHint === 'signin'
-      ? intentHint
-      : (await storageGet('fym.auth_intent')) ?? 'signup';
-
-  if (intent === 'signin') {
-    try {
-      const status = await getOnboardingStatus();
-      if (status.onboarding_step === 'complete') {
-        router.replace('/(tabs)/discovery' as Href);
-        return;
-      }
-    } catch {
-      /* fall through to onboarding */
-    }
+async function routeAfterAuth() {
+  try {
+    await ensurePublishedKeys();
+  } catch {
+    /* chat keys later */
   }
+  try {
+    await loadUserProfile();
+  } catch {
+    /* local defaults */
+  }
+
+  try {
+    const status = await getOnboardingStatus();
+    if (status.onboarding_step === 'complete') {
+      router.replace('/(tabs)/discovery' as Href);
+      return;
+    }
+  } catch {
+    /* new user */
+  }
+
   router.replace('/(onboarding)/basic-info' as Href);
 }
 
 export default function OtpVerifyScreen() {
   const insets = useSafeAreaInsets();
-  const { target, channel, intent: intentParam } = useLocalSearchParams<{
+  const { target, channel: channelParam, intent: intentParam } = useLocalSearchParams<{
     target?: string;
     channel?: string;
     intent?: string;
   }>();
-  const [phone, setPhone] = React.useState<string | null>(null);
+
+  const channel =
+    (Array.isArray(channelParam) ? channelParam[0] : channelParam) === 'email'
+      ? 'email'
+      : 'phone';
+
+  const [dest, setDest] = React.useState<string | null>(null);
   const [digits, setDigits] = React.useState('');
   const [seconds, setSeconds] = React.useState(30);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | undefined>();
   const inputRef = React.useRef<TextInput>(null);
-  // prevent double verify (auto-submit + button, or React Strict double-fire)
   const inFlight = React.useRef(false);
   const done = React.useRef(false);
 
   React.useEffect(() => {
     let alive = true;
     (async () => {
-      const stored = await getPendingPhone();
+      const stored = await getPendingAuth();
       if (!alive) return;
-      if (stored) {
-        setPhone(stored);
+      if (stored && stored.channel === channel) {
+        setDest(stored.target);
         return;
       }
-      // fallback: rebuild from display param (digits only, no +)
       const raw = Array.isArray(target) ? target[0] : target;
-      if (raw && channel === 'phone') {
+      if (!raw) return;
+      if (channel === 'phone') {
         const rebuilt = raw.startsWith('+') ? raw : `+${String(raw).replace(/\D/g, '')}`;
-        setPhone(rebuilt);
-        await setPendingPhone(rebuilt);
+        setDest(rebuilt);
+        await setPendingAuth({ channel: 'phone', target: rebuilt });
+      } else {
+        const em = String(raw).trim().toLowerCase();
+        setDest(em);
+        await setPendingAuth({ channel: 'email', target: em });
       }
     })();
     return () => {
@@ -81,15 +103,13 @@ export default function OtpVerifyScreen() {
   }, [seconds]);
 
   React.useEffect(() => {
-    if (digits.length === LENGTH && phone) {
-      void verify(digits);
-    }
+    if (digits.length === LENGTH && dest) void verify(digits);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [digits, phone]);
+  }, [digits, dest]);
 
   const verify = async (code: string) => {
-    if (!phone) {
-      setError('Missing phone — go back and resend.');
+    if (!dest) {
+      setError('Missing destination — go back and resend.');
       return;
     }
     if (inFlight.current || done.current) return;
@@ -97,17 +117,19 @@ export default function OtpVerifyScreen() {
     setBusy(true);
     setError(undefined);
     try {
-      await verifyOtp(phone, code);
+      if (channel === 'email') {
+        await verifyEmailOtp(dest, code);
+      } else {
+        await verifyOtp(dest, code);
+      }
       done.current = true;
-      await clearPendingPhone();
-      const intent = Array.isArray(intentParam) ? intentParam[0] : intentParam;
-      await routeAfterOtp(intent);
+      await clearPendingAuth();
+      await routeAfterAuth();
     } catch (e) {
       setDigits('');
       const msg = e instanceof ApiError ? e.message : 'Invalid code';
-      // friendlier hint for common Twilio/Supabase cases
       if (/expired|invalid/i.test(msg)) {
-        setError(`${msg} — request a new code. Use the latest SMS only.`);
+        setError(`${msg} — request a new code.`);
       } else {
         setError(msg);
       }
@@ -118,11 +140,15 @@ export default function OtpVerifyScreen() {
   };
 
   const resend = async () => {
-    if (!phone || inFlight.current) return;
+    if (!dest || inFlight.current) return;
     setError(undefined);
     try {
-      await sendOtp(phone);
-      await setPendingPhone(phone);
+      if (channel === 'email') {
+        await sendEmailOtp(dest);
+      } else {
+        await sendOtp(dest);
+      }
+      await setPendingAuth({ channel, target: dest });
       setSeconds(30);
       setDigits('');
       done.current = false;
@@ -131,7 +157,13 @@ export default function OtpVerifyScreen() {
     }
   };
 
-  const display = phone ?? (target ? `+${String(target).replace(/\D/g, '')}` : 'your phone');
+  const display =
+    dest ??
+    (channel === 'email'
+      ? String(target ?? 'your email')
+      : target
+        ? `+${String(target).replace(/\D/g, '')}`
+        : 'your phone');
 
   return (
     <View
@@ -147,7 +179,12 @@ export default function OtpVerifyScreen() {
         Enter the{'\n'}6-digit code
       </Text>
       <Text variant="lead" className="mt-2">
-        Sent to {display}. Codes expire after a few minutes.
+        {channel === 'email'
+          ? `Sent to ${display} via email. Check spam if needed.`
+          : `Sent to ${display}. Codes expire after a few minutes.`}
+      </Text>
+      <Text variant="caption" className="mt-1">
+        Step 2 of 2 — verification
       </Text>
 
       <Pressable
@@ -189,14 +226,14 @@ export default function OtpVerifyScreen() {
       <View className="mt-8">
         <Button
           size="lg"
-          disabled={busy || digits.length < LENGTH || !phone}
-          onPress={() => verify(digits)}
+          disabled={busy || digits.length < LENGTH || !dest}
+          onPress={() => void verify(digits)}
         >
           <Text>{busy ? 'Checking…' : 'Verify & continue'}</Text>
         </Button>
       </View>
 
-      <Pressable disabled={seconds > 0 || busy} onPress={resend} className="mt-6 items-center">
+      <Pressable disabled={seconds > 0 || busy} onPress={() => void resend()} className="mt-6 items-center">
         <Text
           className={`font-jakarta-bold text-sm ${
             seconds > 0 ? 'text-fym-text-muted' : 'text-fym-coral'

@@ -7,8 +7,46 @@ import { router, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as React from 'react';
 import { Image, View } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 
 const FRAMES_NEEDED = 3;
+
+function LivenessRing({ active }: { active: boolean }) {
+  const pulse = useSharedValue(1);
+  React.useEffect(() => {
+    if (!active) {
+      pulse.value = 1;
+      return;
+    }
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1.06, { duration: 700, easing: Easing.inOut(Easing.quad) }),
+        withTiming(1, { duration: 700, easing: Easing.inOut(Easing.quad) })
+      ),
+      -1,
+      false
+    );
+  }, [active, pulse]);
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+    opacity: active ? 0.85 : 0,
+  }));
+  return (
+    <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+      <Animated.View
+        style={style}
+        className="h-48 w-48 rounded-full border-2 border-fym-mint"
+      />
+    </View>
+  );
+}
 
 export default function LivenessScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -99,8 +137,9 @@ export default function LivenessScreen() {
           )
         }
       >
-        <View className="overflow-hidden rounded-card border border-border bg-black">
+        <View className="relative overflow-hidden rounded-card border border-border bg-black">
           <CameraView ref={cameraRef} style={{ width: '100%', height: 320 }} facing="front" />
+          <LivenessRing active={!busy && captured.length < FRAMES_NEEDED} />
         </View>
         {error ? (
           <Text className="mt-3 font-jakarta-bold text-sm text-red-500">{error}</Text>
@@ -112,6 +151,7 @@ export default function LivenessScreen() {
                 key={i}
                 source={{ uri: `data:image/jpeg;base64,${b64}` }}
                 className="h-12 w-12 rounded-lg border border-border"
+                accessibilityLabel={`Liveness frame ${i + 1}`}
               />
             ))}
           </View>

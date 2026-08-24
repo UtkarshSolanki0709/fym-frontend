@@ -1,3 +1,4 @@
+import { NAV } from '@/lib/motion';
 import { Stack } from 'expo-router';
 
 export default function OnboardingLayout() {
@@ -6,7 +7,10 @@ export default function OnboardingLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: '#F3EFE6' },
-        animation: 'slide_from_right',
+        animation: NAV.onboarding.animation,
+        animationDuration: NAV.onboarding.animationDuration,
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true,
       }}
     />
   );
