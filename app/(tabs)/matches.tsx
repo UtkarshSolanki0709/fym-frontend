@@ -40,12 +40,14 @@ export default function MatchesScreen() {
   const [previews, setPreviews] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       await ensurePublishedKeys().catch(() => undefined);
       const { matches: rows } = await getMatches();
       setMatches(rows);
+      setError(null);
       const map: Record<string, string> = {};
       await Promise.all(
         rows.map(async (m) => {
@@ -62,8 +64,8 @@ export default function MatchesScreen() {
         }),
       );
       setPreviews(map);
-    } catch {
-      // keep previous
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load chats');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -84,6 +86,7 @@ export default function MatchesScreen() {
         roomId: m.room_id,
         peerId: m.peer.id,
         name: m.peer.display_name,
+        photo: m.peer.photo_url ?? '',
       },
     } as Href);
   };
@@ -108,6 +111,14 @@ export default function MatchesScreen() {
           <Settings size={24} color={INK} />
         </Pressable>
       </View>
+
+      {error && !loading ? (
+        <View className="mx-gutter mt-3 rounded-card border border-fym-coral bg-fym-pastel-pink/60 px-3 py-2">
+          <Text className="font-jakarta-bold text-xs text-fym-ink">
+            {error} — pull down to retry.
+          </Text>
+        </View>
+      ) : null}
 
       {loading ? (
         <View className="flex-1 items-center justify-center">

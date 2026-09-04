@@ -1,3 +1,4 @@
+import { MatchPopup } from '@/components/deck/MatchPopup';
 import { ProfileDeck } from '@/components/deck/ProfileDeck';
 import { ScreenEnter } from '@/components/motion';
 import { Chip } from '@/components/ui/chip';
@@ -29,6 +30,13 @@ const REVIEW_TAGS = [
 
 type PassQueueItem = { target_id: string; tags: string[] };
 
+/** Backend /swipe/pass/batch accepts 1–5 items per call */
+const PASS_BATCH_SIZE = 5;
+/** Auto-flush safety valve if the user keeps passing past the banner */
+const PASS_AUTO_FLUSH = 10;
+
+type ActiveMatch = { roomId: string; name: string; photo: string | null };
+
 export default function DiscoveryScreen() {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
@@ -42,6 +50,8 @@ export default function DiscoveryScreen() {
   const [passQueue, setPassQueue] = React.useState<PassQueueItem[]>([]);
   const [banner, setBanner] = React.useState(false);
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
+  const [activeMatch, setActiveMatch] = React.useState<ActiveMatch | null>(null);
+  const [likeBusy, setLikeBusy] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -103,55 +113,112 @@ export default function DiscoveryScreen() {
     });
   };
 
+  const flushPasses = React.useCallback(
+    async (items: PassQueueItem[], defaultTags: string[]): Promise<PassQueueItem[]> => {
+      // Returns whatever failed so the caller can put it back — no silent loss.
+      const failed: PassQueueItem[] = [];
+      for (let i = 0; i < items.length; i += PASS_BATCH_SIZE) {
+        const slice = items.slice(i, i + PASS_BATCH_SIZE);
+        try {
+          await swipePassBatch(
+            slice.map((p) => ({
+              target_id: p.target_id,
+              tags: p.tags.length ? p.tags : defaultTags,
+            })),
+          );
+        } catch {
+          failed.push(...slice);
+        }
+      }
+      return failed;
+    },
+    [],
+  );
+
   const onPass = () => {
     if (!profile) return;
     setPassQueue((q) => {
       const next = [...q, { target_id: profile.id, tags: [] as string[] }];
-      if (next.length >= 5) {
-        setBanner(true);
-        return next.slice(0, 5);
-      }
+      if (next.length >= PASS_BATCH_SIZE) setBanner(true);
       return next;
     });
     advance();
   };
+
+  // Safety valve: if the user keeps passing past the banner, flush the queue
+  // as "Not my type" so passes never pile up unsubmitted.
+  const flushingRef = React.useRef(false);
+  React.useEffect(() => {
+    if (passQueue.length < PASS_AUTO_FLUSH || flushingRef.current) return;
+    flushingRef.current = true;
+    const queued = [...passQueue];
+    setPassQueue([]);
+    void flushPasses(queued, ['Not my type'])
+      .then((failed) => {
+        if (failed.length) setPassQueue((prev) => [...failed, ...prev]);
+      })
+      .finally(() => {
+        flushingRef.current = false;
+      });
+  }, [passQueue, flushPasses]);
 
   const submitReviews = async () => {
     if (selectedTags.length === 0) {
       setError('Pick at least one tag');
       return;
     }
+    const queued = [...passQueue];
+    setPassQueue([]);
+    const failed = await flushPasses(queued, selectedTags);
+    if (failed.length) {
+      setPassQueue((prev) => [...failed, ...prev]);
+      setError('Some reviews failed to submit — try again');
+      return;
+    }
+    setBanner(false);
+    setSelectedTags([]);
+    setError(null);
+  };
+
+  const onLike = async (comment?: string) => {
+    if (!profile || likeBusy) return;
+    setLikeBusy(true);
     try {
-      await swipePassBatch(
-        passQueue.map((p) => ({ target_id: p.target_id, tags: selectedTags })),
-      );
-      setPassQueue([]);
-      setBanner(false);
-      setSelectedTags([]);
-      setError(null);
+      const res = await swipeLike(profile.id, comment);
+      if (res.matched && res.roomId) {
+        setActiveMatch({
+          roomId: res.roomId,
+          name: profile.displayName,
+          photo: profile.headUrl,
+        });
+      }
+      advance();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Review submit failed');
+      setError(e instanceof ApiError ? e.message : 'Like failed — try again');
+      // Swipe didn't land — keep the card so nothing is silently lost.
+    } finally {
+      setLikeBusy(false);
     }
   };
 
-  const onLike = async () => {
-    if (!profile) return;
+  const onSuperLike = async (comment?: string) => {
+    if (!profile || likeBusy) return;
+    setLikeBusy(true);
     try {
-      await swipeLike(profile.id);
+      const res = await swipeSuperlike(profile.id, comment);
+      if (res.matched && res.roomId) {
+        setActiveMatch({
+          roomId: res.roomId,
+          name: profile.displayName,
+          photo: profile.headUrl,
+        });
+      }
+      advance();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Like failed');
+      setError(e instanceof ApiError ? e.message : 'Superlike failed — try again');
+    } finally {
+      setLikeBusy(false);
     }
-    advance();
-  };
-
-  const onSuperLike = async () => {
-    if (!profile) return;
-    try {
-      await swipeSuperlike(profile.id);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Superlike failed');
-    }
-    advance();
   };
 
   if (loading) {
@@ -269,9 +336,9 @@ export default function DiscoveryScreen() {
                 setPassQueue([]);
                 setSelectedTags([]);
                 if (queued.length > 0) {
-                  void swipePassBatch(
-                    queued.map((p) => ({ target_id: p.target_id, tags: ['Not my type'] })),
-                  ).catch(() => undefined);
+                  void flushPasses(queued, ['Not my type']).then((failed) => {
+                    if (failed.length) setPassQueue((prev) => [...failed, ...prev]);
+                  });
                 }
               }}
             />
@@ -283,11 +350,27 @@ export default function DiscoveryScreen() {
       <ProfileDeck
         key={profile.id + index}
         profile={profile}
-        reviewQueued={passQueue.length}
+        reviewQueued={Math.min(passQueue.length, PASS_BATCH_SIZE)}
         onPass={onPass}
-        onLike={() => void onLike()}
-        onSuperLike={() => void onSuperLike()}
+        onLike={(comment) => void onLike(comment)}
+        onSuperLike={(comment) => void onSuperLike(comment)}
       />
+
+      {activeMatch ? (
+        <MatchPopup
+          matchName={activeMatch.name}
+          matchPhoto={activeMatch.photo}
+          onSayHi={() => {
+            const m = activeMatch;
+            setActiveMatch(null);
+            router.push({
+              pathname: '/chat/[roomId]',
+              params: { roomId: m.roomId, name: m.name, photo: m.photo ?? '' },
+            });
+          }}
+          onKeepSwiping={() => setActiveMatch(null)}
+        />
+      ) : null}
     </View>
   );
 }

@@ -7,15 +7,37 @@ type Props = {
   messages: DecryptedMessage[];
   myId: string | null;
   onImagePress?: (mediaId: string, mime: string) => void;
+  onLoadOlder?: () => void;
+  hasMore?: boolean;
+  loadingOlder?: boolean;
 };
 
-export function MessageList({ messages, myId, onImagePress }: Props) {
+export function MessageList({
+  messages,
+  myId,
+  onImagePress,
+  onLoadOlder,
+  hasMore = false,
+  loadingOlder = false,
+}: Props) {
   return (
     <FlatList
       data={[...messages].reverse()}
       inverted
       keyExtractor={(m) => m.id}
       contentContainerClassName="px-edge py-3"
+      // Inverted list: end reached = scrolled to the top = oldest messages
+      onEndReached={hasMore && !loadingOlder ? onLoadOlder : undefined}
+      onEndReachedThreshold={0.6}
+      ListFooterComponent={
+        loadingOlder ? (
+          <View className="items-center py-3">
+            <Text className="font-jakarta-bold text-xs text-fym-text-muted">
+              Loading earlier messages…
+            </Text>
+          </View>
+        ) : null
+      }
       renderItem={({ item }) => {
         if (item.payload?.t === 'system') {
           return (

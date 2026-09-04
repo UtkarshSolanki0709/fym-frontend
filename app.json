@@ -10,7 +10,14 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.fym.mobile"
+      "bundleIdentifier": "app.fym.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "FYM uses your camera to take your profile photos and verify you're a real person with a quick selfie check.",
+        "NSPhotoLibraryUsageDescription": "FYM needs photo library access so you can choose existing photos for your profile and send pictures in chats.",
+        "NSPhotoLibraryAddUsageDescription": "FYM can save photos you choose to keep, like images from your chats.",
+        "NSFaceIDUsageDescription": "FYM uses Face ID to keep your account secure on this device.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "app.fym.mobile",
@@ -41,7 +48,25 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#F0A020"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "FYM uses your camera to take your profile photos and verify you're a real person with a quick selfie check."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "FYM needs photo library access so you can choose existing photos for your profile and send pictures in chats."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

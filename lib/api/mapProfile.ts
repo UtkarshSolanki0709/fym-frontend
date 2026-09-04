@@ -1,8 +1,8 @@
 import type { ApiDiscoveryProfile } from './client';
-import type { ProfileCard } from '@/lib/mock/profiles';
+import type { DeckProfileModel, ProfileCard } from '@/lib/deck/types';
 
-/** Deck profile shape (API or seed) */
-export type DeckProfile = {
+/** Deck profile shape mapped from the discovery API */
+export type DeckProfile = DeckProfileModel & {
   id: string;
   displayName: string;
   age: number;
@@ -17,9 +17,8 @@ export type DeckProfile = {
 export function mapDiscoveryToDeck(p: ApiDiscoveryProfile): DeckProfile {
   const photos = Array.isArray(p.photos) ? p.photos : [];
   const urls = photos.map((x) => x?.url).filter(Boolean) as string[];
-  const headUrl =
-    urls[0] ??
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=900&q=80';
+  // No stock-photo fallback: photo-less profiles render initials in the deck
+  const headUrl = urls[0] ?? '';
 
   const media: Extract<ProfileCard, { type: 'media' }>[] = urls.slice(1).map((url) => ({
     type: 'media',

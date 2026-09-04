@@ -8,16 +8,19 @@ import {
   Fraunces_700Bold,
   Fraunces_800ExtraBold,
 } from '@expo-google-fonts/fraunces';
-import { ThemeProvider, useTheme } from '@react-navigation/native';
+import { ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
+import * as Notifications from 'expo-notifications';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AnimatedSplash } from '@/components/motion';
+import { hasSession } from '@/lib/api/session';
+import { registerForChatPush } from '@/lib/chat/registerPush';
 import { NAV } from '@/lib/motion';
 import { BRAND, NAV_THEME } from '@/lib/theme';
 
@@ -25,8 +28,28 @@ import '../global.css';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
-function ThemeShortcutHandler() {
-  return null;
+// Foreground presentation — without this, pushes arrive silently on Android.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+/** Best-effort push registration once a session exists (permission prompt included). */
+function usePushRegistration(splashDone: boolean) {
+  useEffect(() => {
+    if (!splashDone) return;
+    let cancelled = false;
+    void hasSession().then((authed) => {
+      if (authed && !cancelled) void registerForChatPush();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [splashDone]);
 }
 
 export default function RootLayout() {
@@ -46,6 +69,7 @@ export default function RootLayout() {
   }, [loaded]);
 
   const [splashDone, setSplashDone] = useState(false);
+  usePushRegistration(splashDone);
 
   // Keep a plain dark view underneath until the splash overlay finishes
   // its own exit animation — avoids a white flash on first render.
@@ -65,7 +89,6 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <ThemeProvider value={NAV_THEME}>
-            <ThemeShortcutHandler />
             <Stack
               screenOptions={{
                 headerShown: false,
@@ -92,6 +115,10 @@ export default function RootLayout() {
               <Stack.Screen
                 name="chat/[roomId]"
                 options={{ animation: 'slide_from_right', animationDuration: 220, title: 'Chat' }}
+              />
+              <Stack.Screen
+                name="grievance"
+                options={{ animation: 'slide_from_right', animationDuration: 220, title: 'Grievance' }}
               />
             </Stack>
           </ThemeProvider>

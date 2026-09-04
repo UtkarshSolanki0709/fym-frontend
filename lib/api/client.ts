@@ -212,18 +212,33 @@ export async function fetchDiscovery() {
   );
 }
 
-export async function swipeLike(target_id: string) {
+export async function swipeLike(target_id: string, note?: string) {
   return request<{ ok: boolean; matched: boolean; roomId?: string }>('/swipe/like', {
     method: 'POST',
-    body: { target_id },
+    body: { target_id, note: note?.trim() || undefined },
   });
 }
 
-export async function swipeSuperlike(target_id: string) {
+export async function swipeSuperlike(target_id: string, note?: string) {
   return request<{ ok: boolean; matched: boolean; roomId?: string }>('/swipe/superlike', {
     method: 'POST',
-    body: { target_id },
+    body: { target_id, note: note?.trim() || undefined },
   });
+}
+
+export type IncomingLike = {
+  id: string;
+  display_name: string;
+  age: number | null;
+  photo_url: string | null;
+  is_verified: boolean;
+  superliked: boolean;
+  note: string | null;
+  liked_at: string;
+};
+
+export async function getWhoLikedMe() {
+  return request<{ tier: string; total: number; profiles: IncomingLike[] }>('/swipe/likes');
 }
 
 export async function swipePassBatch(
@@ -356,6 +371,49 @@ export async function registerPushToken(token: string, platform: string) {
   return request<{ ok: boolean }>('/push/register', {
     method: 'POST',
     body: { token, platform },
+  });
+}
+
+// ── Safety: report / block / grievance ────────────────
+export const REPORT_REASONS = [
+  'Inappropriate photos',
+  'Harassment or abuse',
+  'Fake profile / catfish',
+  'Spam or scam',
+  'Underage user',
+  'Off-platform solicitation',
+  'Other',
+] as const;
+
+export async function submitReport(body: {
+  target_id: string;
+  room_id?: string;
+  reasons: string[];
+  notes?: string;
+  agreement_version?: string;
+}) {
+  return request<{ id: string; status: string; created_at: string }>('/report', {
+    method: 'POST',
+    body: { agreement_version: 'v1', ...body },
+  });
+}
+
+export async function blockUser(target_id: string) {
+  return request<{ ok: boolean; blocked: string }>('/report/block', {
+    method: 'POST',
+    body: { target_id },
+  });
+}
+
+export async function submitGrievance(body: {
+  category: string;
+  description: string;
+  contact_email?: string;
+  target_id?: string;
+}) {
+  return request<{ id: string; status: string; created_at: string }>('/grievance', {
+    method: 'POST',
+    body,
   });
 }
 

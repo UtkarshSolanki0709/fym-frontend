@@ -45,6 +45,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const INK = '#14213D';
 const CYBER_CRIME = 'https://cybercrime.gov.in';
+const PRIVACY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL ?? '';
+const TERMS_URL = process.env.EXPO_PUBLIC_TERMS_URL ?? '';
+
+function openPolicy(url: string, name: string) {
+  if (!url) {
+    Alert.alert(
+      name,
+      'The full document is being finalized for launch. Questions? Reach the grievance officer via Safety center.',
+    );
+    return;
+  }
+  void Linking.openURL(url).catch(() => Alert.alert('Could not open link', url));
+}
 
 function Toggle({
   value,
@@ -315,7 +328,7 @@ export default function SettingsScreen() {
             <PrefRow
               icon={<Shield size={16} color={INK} />}
               title="Read receipts"
-              subtitle="When chat ships"
+              subtitle="Show partners when you've read their message"
               value={prefs.readReceipts}
               onToggle={() => flip('readReceipts')}
             />
@@ -363,18 +376,13 @@ export default function SettingsScreen() {
               Safety center
             </Text>
             <Text className="mt-2 font-jakarta text-sm text-fym-text-muted">
-              Block and report live inside chat when messaging ships. For urgent cybercrime, use the
+              Report and block live inside every chat (tap the flag). For urgent cybercrime, use the
               national portal.
             </Text>
             <View className="mt-3 gap-2">
               <Button
                 variant="secondary"
-                onPress={() =>
-                  Alert.alert(
-                    'In-app safety',
-                    'Grievance officer name and contact will be listed here for IT Rules compliance. Report/block stays in chat and profile menus.',
-                  )
-                }
+                onPress={() => router.push('/grievance' as Href)}
               >
                 <Text>Grievance & reports</Text>
               </Button>
@@ -398,22 +406,12 @@ export default function SettingsScreen() {
             <NavRow
               title="Privacy policy"
               subtitle="How we handle your data"
-              onPress={() =>
-                Alert.alert(
-                  'Privacy policy',
-                  'Draft lives with the compliance pack (DPDP + IT Rules). Full policy will open in-app and on the web before launch.',
-                )
-              }
+              onPress={() => openPolicy(PRIVACY_URL, 'Privacy policy')}
             />
             <NavRow
               title="Terms of use"
               subtitle="Rules of the road"
-              onPress={() =>
-                Alert.alert(
-                  'Terms of use',
-                  'Terms will be published before public launch. Contact support for early access questions.',
-                )
-              }
+              onPress={() => openPolicy(TERMS_URL, 'Terms of use')}
             />
             <View className="border-t border-fym-ink/15 py-3.5">
               <Text className="font-jakarta-bold text-xs uppercase text-fym-text-muted">

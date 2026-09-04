@@ -7,10 +7,10 @@ import { Stamp } from '@/components/ui/stamp';
 import { Text } from '@/components/ui/text';
 import {
   buildShuffledHand,
+  type DeckProfileModel,
   type HandCard,
-  type MockProfile,
   type ProfileCard,
-} from '@/lib/mock/profiles';
+} from '@/lib/deck/types';
 import { EASE, Enter, MS, TIMING_SHARP } from '@/lib/motion';
 import { playFlipSfx, playShuffleSfx, playSkipRevealSfx } from '@/lib/sfx';
 import { Image } from 'expo-image';
@@ -39,7 +39,7 @@ const SKIP_PULL = 72;
 const SKIP_SNAP = 96;
 
 type ProfileDeckProps = {
-  profile: MockProfile;
+  profile: DeckProfileModel;
   onPass: () => void;
   onLike: (comment?: string) => void;
   onSuperLike: (comment?: string) => void;
@@ -247,12 +247,20 @@ function ProfileDeck({
                   <Shadow offset={6} className="rounded-card">
                     <View className="overflow-hidden rounded-card border border-border bg-white">
                       <View className="relative aspect-[3/4] w-full">
-                        <Image
-                          source={{ uri: profile.headUrl }}
-                          style={{ width: '100%', height: '100%' }}
-                          contentFit="cover"
-                          transition={120}
-                        />
+                        {profile.headUrl ? (
+                          <Image
+                            source={{ uri: profile.headUrl }}
+                            style={{ width: '100%', height: '100%' }}
+                            contentFit="cover"
+                            transition={120}
+                          />
+                        ) : (
+                          <View className="h-full w-full items-center justify-center bg-fym-pastel-lavender">
+                            <Text className="font-jakarta-extrabold text-6xl text-fym-ink/70">
+                              {profile.displayName.charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
                         <View pointerEvents="none" className="absolute inset-0 bg-[#1A0E05]/5" />
                         {!dealt ? (
                           <View className="absolute bottom-4 left-0 right-0 items-center">

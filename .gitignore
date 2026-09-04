@@ -44,3 +44,8 @@ app-example
 
 .env
 .agents
+
+# planning/scan docs live in the workspace root (FYM/docs), never in this repo
+*.md
+!README.md
+.mimosa/

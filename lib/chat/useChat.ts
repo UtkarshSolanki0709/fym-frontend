@@ -54,6 +54,10 @@ export function useChat(roomId: string, peerId: string) {
   const [myId, setMyId] = React.useState<string | null>(null);
   const keyRef = React.useRef<CryptoKey | null>(null);
   const channelRef = React.useRef<RealtimeChannel | null>(null);
+  // Pagination: cursor = created_at of the oldest loaded message
+  const [cursor, setCursor] = React.useState<string | null>(null);
+  const [hasMore, setHasMore] = React.useState(false);
+  const [loadingOlder, setLoadingOlder] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -68,9 +72,12 @@ export function useChat(roomId: string, peerId: string) {
         if (cancelled) return;
         keyRef.current = roomKey;
 
-        const { messages: raw } = await getMessages(roomId);
+        const { messages: raw, next_cursor } = await getMessages(roomId);
         const dec = await Promise.all(raw.map((m) => decryptWire(roomKey, m)));
+        if (cancelled) return;
         setMessages(dec.reverse());
+        setCursor(next_cursor);
+        setHasMore(raw.length > 0);
         setReady(true);
         void markRoomRead(roomId);
 
@@ -193,7 +200,35 @@ export function useChat(roomId: string, peerId: string) {
     [roomId, myId],
   );
 
-  return { messages, loading, error, ready, send, myId, keyRef };
+  const loadOlder = React.useCallback(async () => {
+    const key = keyRef.current;
+    if (!key || !cursor || !hasMore || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const { messages: raw, next_cursor } = await getMessages(roomId, cursor);
+      const dec = await Promise.all(raw.map((m) => decryptWire(key, m)));
+      setMessages((prev) => [...dec.reverse(), ...prev]);
+      setCursor(next_cursor);
+      if (raw.length === 0) setHasMore(false);
+    } catch {
+      setHasMore(false);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [roomId, cursor, hasMore, loadingOlder]);
+
+  return {
+    messages,
+    loading,
+    error,
+    ready,
+    send,
+    myId,
+    keyRef,
+    loadOlder,
+    hasMore,
+    loadingOlder,
+  };
 }
 
 export async function decryptPreview(

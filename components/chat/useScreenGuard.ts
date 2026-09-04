@@ -1,6 +1,6 @@
 import * as ScreenCapture from 'expo-screen-capture';
 import { useEffect } from 'react';
-import { Alert, AppState, Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 /**
  * Chat-only capture controls. onScreenshot → local alert + caller notifies peer.
@@ -30,15 +30,8 @@ export function useScreenGuard(opts: {
       });
     })();
 
-    const appSub = AppState.addEventListener('change', (s) => {
-      if (s !== 'active') {
-        // allow capture when not in chat focus — cleaned on unmount too
-      }
-    });
-
     return () => {
       sub?.remove();
-      appSub.remove();
       void ScreenCapture.allowScreenCaptureAsync().catch(() => undefined);
     };
   }, [opts.enabled, opts.onScreenshot]);
