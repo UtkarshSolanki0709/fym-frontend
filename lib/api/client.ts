@@ -1,9 +1,52 @@
+import Constants from 'expo-constants';
 import { clearSession, getAccessToken, getRefreshToken, saveSession } from './session';
 
-const BASE =
-  process.env.EXPO_PUBLIC_RAILWAYS_URL?.replace(/\/$/, '') ||
-  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') ||
-  'https://fym-backend-production-f4a0.up.railway.app';
+export function getBaseUrl(): string {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  // In Expo Go or local dev, resolve dev machine IP from debugger/bundler hostUri
+  const hostUri =
+    Constants.expoConfig?.hostUri ??
+    (Constants as any).manifest2?.extra?.expoClient?.hostUri ??
+    (Constants as any).manifest?.debuggerHost;
+  if (hostUri) {
+    const host = hostUri.split(':')[0];
+    if (host) return `http://${host}:3001`;
+  }
+
+  return 'https://fym-backend-tec9.onrender.com';
+}
+
+/** Resolves any media URL from the backend to ensure it points to the active API base */
+export function resolveMediaUrl(url?: string | null): string {
+  // typeof guard: old profile-cache JSON can hold non-string urls (demo seeds,
+  // schema drift) — .startsWith on those crashed the You tab photo render
+  if (!url || typeof url !== 'string') return '';
+  if (url.startsWith('/media')) {
+    return `${getBaseUrl()}${url}`;
+  }
+  if (
+    url.includes('localhost:') ||
+    url.includes('127.0.0.1:') ||
+    url.includes('railway.app')
+  ) {
+    try {
+      const fullUrl = url.startsWith('http://') || url.startsWith('https://') ? url : `http://${url}`;
+      const parsed = new URL(fullUrl);
+      const baseParsed = new URL(getBaseUrl());
+      parsed.protocol = baseParsed.protocol;
+      parsed.hostname = baseParsed.hostname;
+      parsed.port = baseParsed.port;
+      return parsed.toString();
+    } catch {
+      return url.replace(/https?:\/\/[^/]+/, getBaseUrl());
+    }
+  }
+  return url;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -35,7 +78,8 @@ async function request<T>(path: string, opts: Opts = {}): Promise<T> {
     if (token) headers.Authorization = `Bearer ${token}`;
   }
 
-  const url = `${BASE}${path}`;
+  const base = getBaseUrl();
+  const url = `${base}${path}`;
   let res: Response;
   try {
     res = await fetch(url, {
@@ -50,7 +94,7 @@ async function request<T>(path: string, opts: Opts = {}): Promise<T> {
     throw new ApiError(
       0,
       'NETWORK_ERROR',
-      `${hint}. Check API URL + CORS (${BASE}). If SMS arrived, server OK — browser may be blocking the response.`,
+      `${hint}. Check API URL + CORS (${base}). If SMS arrived, server OK — browser may be blocking the response.`,
     );
   }
 
@@ -417,4 +461,4 @@ export async function submitGrievance(body: {
   });
 }
 
-export { BASE as API_BASE };
+export const API_BASE = getBaseUrl();

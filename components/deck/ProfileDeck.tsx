@@ -12,7 +12,8 @@ import {
   type ProfileCard,
 } from '@/lib/deck/types';
 import { EASE, Enter, MS, TIMING_SHARP } from '@/lib/motion';
-import { playFlipSfx, playShuffleSfx, playSkipRevealSfx } from '@/lib/sfx';
+import { playFlipSfx, playShuffleSfx } from '@/lib/sfx';
+import { resolveMediaUrl } from '@/lib/api/client';
 import { Image } from 'expo-image';
 import { X } from 'lucide-react-native';
 import * as React from 'react';
@@ -23,20 +24,14 @@ import {
   useWindowDimensions,
   type DimensionValue,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolation,
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-
-const SKIP_PULL = 72;
-const SKIP_SNAP = 96;
 
 type ProfileDeckProps = {
   profile: DeckProfileModel;
@@ -61,14 +56,11 @@ function ProfileDeck({
   const [openCard, setOpenCard] = React.useState<ProfileCard | null>(null);
   const [comment, setComment] = React.useState('');
   const [success, setSuccess] = React.useState<'like' | 'super' | null>(null);
-  const [skipArmed, setSkipArmed] = React.useState(false);
   const reduced = useReducedMotion();
   const pendingAction = React.useRef<{ kind: 'like' | 'super'; text?: string } | null>(null);
 
-  const pullY = useSharedValue(0);
   const dealFlash = useSharedValue(0);
   const dealtSV = useSharedValue(0);
-  const skipLive = useSharedValue(0); // 1 when skip control is interactive
 
   const resetDeck = React.useCallback(() => {
     setDealt(false);
@@ -76,12 +68,9 @@ function ProfileDeck({
     setOpenCard(null);
     setComment('');
     setSuccess(null);
-    setSkipArmed(false);
-    pullY.value = 0;
     dealFlash.value = 0;
     dealtSV.value = 0;
-    skipLive.value = 0;
-  }, [pullY, dealFlash, dealtSV, skipLive]);
+  }, [dealFlash, dealtSV]);
 
   React.useEffect(() => {
     resetDeck();
@@ -114,59 +103,6 @@ function ProfileDeck({
     );
   }, []);
 
-  const armSkip = React.useCallback(() => {
-    setSkipArmed(true);
-    skipLive.value = 1;
-    void playSkipRevealSfx();
-  }, [skipLive]);
-
-  const disarmSkip = React.useCallback(() => {
-    setSkipArmed(false);
-    skipLive.value = 0;
-  }, [skipLive]);
-
-  // Swipe up only (inverted pull-to-refresh) — reveals skip under deck.
-  // Simultaneous with native scroll so the hand can still scroll.
-  const pan = Gesture.Pan()
-    .activeOffsetY([-20, 50])
-    .failOffsetX([-32, 32])
-    .onUpdate((e) => {
-      const up = Math.max(0, -e.translationY);
-      pullY.value = Math.min(up, SKIP_SNAP + 36);
-    })
-    .onEnd(() => {
-      if (pullY.value >= SKIP_PULL) {
-        pullY.value = withTiming(SKIP_SNAP, TIMING_SHARP);
-        runOnJS(armSkip)();
-      } else {
-        pullY.value = withTiming(0, TIMING_SHARP);
-        runOnJS(disarmSkip)();
-      }
-    });
-  const nativeScroll = Gesture.Native();
-  const gestures = Gesture.Simultaneous(pan, nativeScroll);
-
-  const deckShiftStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: -pullY.value * 0.4 }],
-  }));
-
-  const skipSlotStyle = useAnimatedStyle(() => {
-    const p = interpolate(
-      pullY.value,
-      [0, SKIP_PULL, SKIP_SNAP],
-      [0, 0.9, 1],
-      Extrapolation.CLAMP
-    );
-    const y = interpolate(pullY.value, [0, SKIP_SNAP], [32, 0], Extrapolation.CLAMP);
-    return {
-      opacity: p,
-      transform: [
-        { translateY: y },
-        { scale: interpolate(p, [0, 1], [0.5, 1], Extrapolation.CLAMP) },
-      ],
-    };
-  });
-
   const aceStyle = useAnimatedStyle(() => {
     // sharp settle — no spring bounce
     const d = dealtSV.value;
@@ -195,8 +131,6 @@ function ProfileDeck({
   }, [onLike, onSuperLike]);
 
   const onSkipPress = () => {
-    pullY.value = withTiming(0, TIMING_SHARP);
-    setSkipArmed(false);
     onPass();
   };
 
@@ -210,16 +144,14 @@ function ProfileDeck({
 
   return (
     <View className="flex-1">
-      <GestureDetector gesture={gestures}>
-        <Animated.View className="flex-1">
-          <Animated.ScrollView
-            className="flex-1"
-            contentContainerClassName="items-center px-edge pb-44 pt-2"
-            showsVerticalScrollIndicator={false}
-            bounces
-            alwaysBounceVertical
-          >
-            <Animated.View style={[{ width: cardW }, deckShiftStyle]}>
+      <Animated.ScrollView
+        className="flex-1"
+        contentContainerClassName="items-center px-edge pb-44 pt-2"
+        showsVerticalScrollIndicator={false}
+        bounces
+        alwaysBounceVertical
+      >
+        <View style={{ width: cardW }}>
               {/* Meta */}
               <View className="mb-3 w-full flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2">
@@ -249,7 +181,7 @@ function ProfileDeck({
                       <View className="relative aspect-[3/4] w-full">
                         {profile.headUrl ? (
                           <Image
-                            source={{ uri: profile.headUrl }}
+                            source={{ uri: resolveMediaUrl(profile.headUrl) }}
                             style={{ width: '100%', height: '100%' }}
                             contentFit="cover"
                             transition={120}
@@ -278,7 +210,7 @@ function ProfileDeck({
                         </Text>
                         <Text variant="caption" className="mt-0.5 text-fym-text-muted">
                           {dealt
-                            ? 'Tap a card to reveal · swipe up to skip'
+                            ? 'Tap a card to reveal · skip below'
                             : 'Deal a shuffled hand'}
                         </Text>
                       </View>
@@ -306,38 +238,31 @@ function ProfileDeck({
                   ))}
                 </View>
               ) : null}
+        </View>
+      </Animated.ScrollView>
 
-              {/* Swipe-up skip zone — sits under the whole deck */}
-              <Animated.View
-                style={skipSlotStyle}
-                className="mt-5 items-center pb-2"
-                pointerEvents={skipArmed ? 'auto' : 'box-none'}
-              >
-                <Pressable
-                  onPress={onSkipPress}
-                  accessibilityLabel="Skip profile"
-                  accessibilityRole="button"
-                  className="h-14 w-14 items-center justify-center rounded-full border-2 border-fym-ink bg-red-600"
-                  style={{
-                    shadowColor: '#000',
-                    shadowOpacity: 0.2,
-                    shadowRadius: 6,
-                    shadowOffset: { width: 0, height: 3 },
-                    elevation: 4,
-                  }}
-                >
-                  <X size={28} color="#0A0A0A" strokeWidth={3} />
-                </Pressable>
-                {skipArmed ? (
-                  <Text className="mt-2 font-jakarta-bold text-[10px] uppercase text-fym-text-muted">
-                    Skip
-                  </Text>
-                ) : null}
-              </Animated.View>
-            </Animated.View>
-          </Animated.ScrollView>
-        </Animated.View>
-      </GestureDetector>
+      {/* Skip — tap-first, always on-screen above the tab bar. Tap to pass
+          and load the next profile. */}
+      <View style={{ position: 'absolute', bottom: 150, alignSelf: 'center' }}>
+        <Pressable
+          onPress={onSkipPress}
+          accessibilityLabel="Skip profile"
+          accessibilityRole="button"
+          className="flex-row items-center gap-2 rounded-pill border-2 border-fym-ink bg-white px-5 py-2.5"
+          style={{
+            shadowColor: '#14213D',
+            shadowOffset: { width: 3, height: 3 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 3,
+          }}
+        >
+          <X size={16} color="#14213D" strokeWidth={3} />
+          <Text className="font-jakarta-extrabold text-[11px] uppercase tracking-wide text-fym-ink">
+            Skip profile
+          </Text>
+        </Pressable>
+      </View>
 
       {/* Enlarge + comment (after reveal) */}
       <Modal visible={!!openCard && !success} animationType="fade" transparent>
@@ -485,7 +410,7 @@ function CardFace({
     return (
       <Shadow offset={3} className="h-full w-full rounded-2xl">
         <View className="h-full w-full overflow-hidden rounded-2xl border border-border bg-white" style={{ width, height }}>
-          <Image source={{ uri: card.url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+          <Image source={{ uri: resolveMediaUrl(card.url) }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
           <View pointerEvents="none" className="absolute inset-0 bg-[#1A0E05]/5" />
           {card.kind === 'video' ? (
             <View className="absolute bottom-1.5 left-1.5 rounded-pill bg-black/60 px-1.5 py-0.5">
@@ -516,7 +441,7 @@ function EnlargedBody({ card }: { card: ProfileCard }) {
   if (card.type === 'media') {
     return (
       <View className="overflow-hidden rounded-card border border-border bg-white">
-        <Image source={{ uri: card.url }} style={{ width: '100%', height: 280 }} contentFit="cover" />
+        <Image source={{ uri: resolveMediaUrl(card.url) }} style={{ width: '100%', height: 280 }} contentFit="cover" />
       </View>
     );
   }

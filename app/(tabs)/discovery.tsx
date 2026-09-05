@@ -2,6 +2,7 @@ import { MatchPopup } from '@/components/deck/MatchPopup';
 import { ProfileDeck } from '@/components/deck/ProfileDeck';
 import { ScreenEnter } from '@/components/motion';
 import { Chip } from '@/components/ui/chip';
+import { Illustration } from '@/components/ui/illustration';
 import { Text } from '@/components/ui/text';
 import {
   ApiError,
@@ -250,13 +251,22 @@ export default function DiscoveryScreen() {
   }
 
   if (!profile || index >= profiles.length) {
+    const isError = Boolean(error);
     return (
       <View className="flex-1 items-center justify-center bg-fym-surface px-edge">
+        <View className="mb-6 items-center justify-center rounded-card border-brutal border-fym-ink bg-white p-6 shadow-brutal">
+          <Illustration
+            name={isError ? 'brokenRailroadTrack' : 'smilingSunMedallion'}
+            size={110}
+          />
+        </View>
         <Text variant="h2" className="text-center">
-          No more profiles
+          {isError ? 'Deck stalled' : 'No more profiles'}
         </Text>
         <Text variant="lead" className="mt-2 text-center">
-          Expand distance later or check back when more people join nearby.
+          {isError
+            ? 'Connection track stalled — check your network and tap reload.'
+            : 'Expand distance later or check back when more people join nearby.'}
         </Text>
         {error ? (
           <Text className="mt-2 text-center font-jakarta-bold text-xs text-fym-text-muted">

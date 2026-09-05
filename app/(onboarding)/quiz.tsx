@@ -1,5 +1,6 @@
 import { StepShell } from '@/components/onboarding/StepShell';
 import { Button } from '@/components/ui/button';
+import { Illustration } from '@/components/ui/illustration';
 import { Text } from '@/components/ui/text';
 import { ApiError, setOnboardingStep, updateQuiz } from '@/lib/api/client';
 import { router, type Href } from 'expo-router';
@@ -70,6 +71,18 @@ export default function QuizScreen() {
           ) : null
         }
       >
+        <View className="mb-4 flex-row items-center gap-3 rounded-card border-brutal border-fym-ink bg-fym-pastel-yellow p-3">
+          <Illustration name="pineappleUpsideDownCake" size={36} />
+          <View className="flex-1">
+            <Text className="font-jakarta-bold text-xs uppercase tracking-wide text-fym-ink">
+              Vibe Check · {idx + 1} of {QUESTIONS.length}
+            </Text>
+            <Text className="font-jakarta text-xs text-fym-text-muted">
+              Answer intuitively — no right or wrong answers.
+            </Text>
+          </View>
+        </View>
+
         <View className="gap-3">
           {[1, 2, 3, 4, 5].map((v) => (
             <Pressable

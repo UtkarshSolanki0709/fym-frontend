@@ -2,7 +2,7 @@ import { Shadow } from '@/components/ui/shadow';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';
 import { Compass, Heart, MessageCircle, User } from 'lucide-react-native';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import * as React from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, {

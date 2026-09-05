@@ -2,6 +2,7 @@ import * as React from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
+import { Illustration } from '@/components/ui/illustration';
 
 type State = { error: Error | null; retryKey: number };
 
@@ -24,6 +25,9 @@ export class ErrorBoundary extends React.Component<
     if (this.state.error) {
       return (
         <View className="flex-1 items-center justify-center bg-fym-surface px-6">
+          <View className="mb-6 items-center justify-center rounded-card border-brutal border-fym-ink bg-white p-6 shadow-brutal">
+            <Illustration name="brokenPillar" size={100} />
+          </View>
           <Text variant="h2" className="text-fym-brand">
             Something went wrong
           </Text>

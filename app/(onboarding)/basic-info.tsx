@@ -1,5 +1,6 @@
 import { StepShell } from '@/components/onboarding/StepShell';
 import { Button } from '@/components/ui/button';
+import { Illustration } from '@/components/ui/illustration';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { ApiError, setOnboardingStep, updateProfileMe } from '@/lib/api/client';
@@ -55,6 +56,18 @@ export default function BasicInfoScreen() {
           </Button>
         }
       >
+        <View className="mb-4 flex-row items-center gap-3 rounded-card border-brutal border-fym-ink bg-fym-pastel-yellow p-3">
+          <Illustration name="heartPennantFlag" size={36} />
+          <View className="flex-1">
+            <Text className="font-jakarta-bold text-xs uppercase tracking-wide text-fym-ink">
+              Step 2 · Your Identity
+            </Text>
+            <Text className="font-jakarta text-xs text-fym-text-muted">
+              Keep it genuine. Real profiles get 4x more mutual likes.
+            </Text>
+          </View>
+        </View>
+
         <View className="gap-4">
           <Input label="Display name" value={name} onChangeText={setName} placeholder="Ananya" />
           <Input

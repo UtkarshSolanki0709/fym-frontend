@@ -96,8 +96,14 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
     /* profile loads again on the You tab */
   }
 
-  const status = await getOnboardingStatus();
-  if (status.onboarding_step === 'complete') {
+  let status: { onboarding_step?: string } | null = null;
+  try {
+    status = await getOnboardingStatus();
+  } catch (e) {
+    console.warn('Failed to fetch onboarding status from backend:', e);
+  }
+
+  if (status?.onboarding_step === 'complete') {
     router.replace('/(tabs)/discovery' as Href);
   } else {
     router.replace('/(onboarding)/basic-info' as Href);

@@ -1,9 +1,10 @@
 import { ScreenEnter } from '@/components/motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Illustration } from '@/components/ui/illustration';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
-import { ApiError, deletePhoto, uploadPhoto } from '@/lib/api/client';
+import { ApiError, deletePhoto, resolveMediaUrl, uploadPhoto } from '@/lib/api/client';
 import { hasSession } from '@/lib/api/session';
 import {
   getUserProfile,
@@ -69,8 +70,17 @@ export default function ProfileScreen() {
   const openEdit = () => router.push('/edit-profile' as Href);
   const openSettings = () => router.push('/settings' as Href);
 
-  const photos = profile.photos;
-  const prompts = profile.prompts;
+  // Cache from older builds can hold malformed entries — render only well-formed ones
+  const photos = (profile.photos ?? [])
+    .filter(
+      (p): p is ProfilePhoto =>
+        !!p && typeof p.url === 'string' && p.url.trim().length > 0,
+    )
+    .map((p, i) => ({
+      id: p.id ? String(p.id) : `photo-${i}`,
+      url: String(p.url),
+    }));
+  const prompts = profile.prompts ?? [];
 
   const movePhoto = async (index: number, dir: -1 | 1) => {
     const j = index + dir;
@@ -99,14 +109,14 @@ export default function ProfileScreen() {
         try {
           const old = photos[index];
           const uploaded = await uploadPhoto(asset.base64);
-          if (old && !old.id.startsWith('demo-') && !old.id.startsWith('local-')) {
+          if (old?.id && !String(old.id).startsWith('demo-') && !String(old.id).startsWith('local-')) {
             try {
               await deletePhoto(old.id);
             } catch {
               /* keep going */
             }
           }
-          next = uploaded;
+          next = { id: uploaded.id, url: resolveMediaUrl(uploaded.url) };
         } catch (e) {
           Alert.alert(
             'Upload failed',
@@ -145,7 +155,8 @@ export default function ProfileScreen() {
       let item: ProfilePhoto;
       if (asset.base64 && (await hasSession())) {
         try {
-          item = await uploadPhoto(asset.base64);
+          const uploaded = await uploadPhoto(asset.base64);
+          item = { id: uploaded.id, url: resolveMediaUrl(uploaded.url) };
         } catch {
           item = { id: `local-${Date.now()}`, url: asset.uri };
         }
@@ -173,8 +184,9 @@ export default function ProfileScreen() {
           void (async () => {
             if (
               (await hasSession()) &&
-              !photo.id.startsWith('demo-') &&
-              !photo.id.startsWith('local-')
+              photo?.id &&
+              !String(photo.id).startsWith('demo-') &&
+              !String(photo.id).startsWith('local-')
             ) {
               try {
                 await deletePhoto(photo.id);
@@ -276,7 +288,7 @@ export default function ProfileScreen() {
               style={brutalShadow}
             >
               <Image
-                source={{ uri: profile.photo_url }}
+                source={{ uri: resolveMediaUrl(profile.photo_url) }}
                 style={{ width: '100%', height: '100%' }}
                 contentFit="cover"
               />
@@ -326,62 +338,70 @@ export default function ProfileScreen() {
             <ActivityIndicator color={INK} className="my-4" />
           ) : null}
           <View className="flex-row flex-wrap gap-3">
-            {photos.map((p, i) => (
-              <View
-                key={p.id}
-                className="w-[47%] overflow-hidden rounded-card border-brutal border-fym-ink bg-white"
-                style={brutalShadow}
-              >
-                <Pressable onPress={() => void replacePhoto(i)} accessibilityLabel="Replace photo">
-                  <View className="relative aspect-[3/4] w-full">
-                    <Image
-                      source={{ uri: p.url }}
-                      style={{ width: '100%', height: '100%' }}
-                      contentFit="cover"
-                    />
-                    {i === 0 ? (
-                      <View className="absolute left-1 top-1 rounded-pill bg-fym-coral px-2 py-0.5">
-                        <Text className="font-jakarta-bold text-[9px] uppercase text-white">
-                          Main
-                        </Text>
-                      </View>
-                    ) : null}
+            {photos.map((p, i) => {
+              const photoUri = resolveMediaUrl(p.url);
+              const photoKey = p.id ? `${p.id}-${i}` : `photo-${i}`;
+              return (
+                <View
+                  key={photoKey}
+                  className="w-[47%] overflow-hidden rounded-card border-brutal border-fym-ink bg-white"
+                  style={brutalShadow}
+                >
+                  <Pressable onPress={() => void replacePhoto(i)} accessibilityLabel="Replace photo">
+                    <View className="relative aspect-[3/4] w-full bg-slate-100">
+                      {photoUri ? (
+                        <Image
+                          source={{ uri: photoUri }}
+                          style={{ width: '100%', height: '100%' }}
+                          contentFit="cover"
+                        />
+                      ) : null}
+                      {i === 0 ? (
+                        <View className="absolute left-1 top-1 rounded-pill bg-fym-coral px-2 py-0.5">
+                          <Text className="font-jakarta-bold text-[9px] uppercase text-white">
+                            Main
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                  <View className="flex-row items-center justify-between border-t border-border px-1 py-1">
+                    <Pressable
+                      onPress={() => void movePhoto(i, -1)}
+                      disabled={i === 0}
+                      className="p-1.5"
+                      style={{ opacity: i === 0 ? 0.3 : 1 }}
+                      accessibilityLabel="Move photo earlier"
+                    >
+                      <ChevronUp size={18} color={INK} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => void movePhoto(i, 1)}
+                      disabled={i === photos.length - 1}
+                      className="p-1.5"
+                      style={{ opacity: i === photos.length - 1 ? 0.3 : 1 }}
+                      accessibilityLabel="Move photo later"
+                    >
+                      <ChevronDown size={18} color={INK} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => void replacePhoto(i)}
+                      className="p-1.5"
+                      accessibilityLabel="Replace photo"
+                    >
+                      <Edit3 size={16} color={INK} />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => removePhoto(i)}
+                      className="p-1.5"
+                      accessibilityLabel="Remove photo"
+                    >
+                      <Trash2 size={16} color="#B91C1C" />
+                    </Pressable>
                   </View>
-                </Pressable>
-                <View className="flex-row items-center justify-between border-t border-border px-1 py-1">
-                  <Pressable
-                    onPress={() => void movePhoto(i, -1)}
-                    disabled={i === 0}
-                    className="p-1.5 opacity-100 disabled:opacity-30"
-                    accessibilityLabel="Move photo earlier"
-                  >
-                    <ChevronUp size={18} color={INK} />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => void movePhoto(i, 1)}
-                    disabled={i === photos.length - 1}
-                    className="p-1.5"
-                    accessibilityLabel="Move photo later"
-                  >
-                    <ChevronDown size={18} color={INK} />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => void replacePhoto(i)}
-                    className="p-1.5"
-                    accessibilityLabel="Replace photo"
-                  >
-                    <Edit3 size={16} color={INK} />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => removePhoto(i)}
-                    className="p-1.5"
-                    accessibilityLabel="Remove photo"
-                  >
-                    <Trash2 size={16} color="#B91C1C" />
-                  </Pressable>
                 </View>
-              </View>
-            ))}
+              );
+            })}
             {photos.length < MAX_PHOTOS ? (
               <Pressable
                 onPress={() => void addPhoto()}
@@ -405,9 +425,12 @@ export default function ProfileScreen() {
         <View className="mt-6">
           <Card brutal reverse contentClassName="bg-fym-pastel-lavender p-4">
             <View className="mb-3 flex-row items-center justify-between border-b-2 border-fym-ink pb-2">
-              <Text className="font-jakarta-extrabold text-sm uppercase tracking-wide text-fym-ink">
-                Prompts
-              </Text>
+              <View className="flex-row items-center gap-2">
+                <Illustration name="bookStack" size={24} />
+                <Text className="font-jakarta-extrabold text-sm uppercase tracking-wide text-fym-ink">
+                  Prompts
+                </Text>
+              </View>
               <Text className="font-jakarta-bold text-[10px] uppercase text-fym-text-muted">
                 {prompts.length}/{MAX_PROMPTS}
               </Text>
@@ -484,6 +507,23 @@ export default function ProfileScreen() {
                 </Button>
               </View>
             ) : null}
+          </Card>
+        </View>
+
+        {/* Profile Status Mascot */}
+        <View className="mt-6 mb-4">
+          <Card contentClassName="flex-row items-center gap-4 bg-fym-pastel-yellow p-4">
+            <View className="h-14 w-14 items-center justify-center rounded-card border-brutal border-fym-ink bg-white shadow-brutal">
+              <Illustration name="loungingCat" size={40} />
+            </View>
+            <View className="flex-1">
+              <Text className="font-jakarta-extrabold text-xs uppercase tracking-wide text-fym-ink">
+                Profile is Active
+              </Text>
+              <Text className="mt-0.5 font-jakarta text-xs text-fym-text-muted">
+                Looking good! Your card is floating through nearby discovery decks.
+              </Text>
+            </View>
           </Card>
         </View>
       </ScrollView>

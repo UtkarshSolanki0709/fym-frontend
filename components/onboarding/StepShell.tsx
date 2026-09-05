@@ -1,5 +1,6 @@
 import { ScreenEnter } from '@/components/motion';
 import { Text } from '@/components/ui/text';
+import { Illustration } from '@/components/ui/illustration';
 import { MS } from '@/lib/motion';
 import * as React from 'react';
 import { View } from 'react-native';
@@ -11,7 +12,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const STEPS = ['liveness', 'basic', 'photos', 'interests', 'quiz'] as const;
+// 2026-09-05: face check moved after photos so the server can compare the
+// live frames against the uploaded photos (see docs/FACE_VERIFICATION.md)
+const STEPS = ['basic', 'photos', 'liveness', 'interests', 'quiz'] as const;
 
 type Props = {
   step: (typeof STEPS)[number];
@@ -42,8 +45,13 @@ export function StepShell({ step, title, subtitle, children, footer }: Props) {
       className="flex-1 bg-fym-surface px-edge"
       style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }}
     >
-      <View className="mb-6 h-1.5 w-full overflow-hidden rounded-full bg-border">
-        <Animated.View className="h-full rounded-full bg-fym-coral" style={barStyle} />
+      <View className="mb-6 flex-row items-center gap-3">
+        <View className="h-10 w-10 items-center justify-center rounded-card border-brutal border-fym-ink bg-fym-cream shadow-brutal">
+          <Illustration name="heartBannerPole" size={24} />
+        </View>
+        <View className="h-2 flex-1 overflow-hidden rounded-full border border-fym-ink/20 bg-border">
+          <Animated.View className="h-full rounded-full bg-fym-coral" style={barStyle} />
+        </View>
       </View>
 
       <ScreenEnter variant="down">

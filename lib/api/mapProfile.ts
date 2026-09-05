@@ -1,4 +1,4 @@
-import type { ApiDiscoveryProfile } from './client';
+import { resolveMediaUrl, type ApiDiscoveryProfile } from './client';
 import type { DeckProfileModel, ProfileCard } from '@/lib/deck/types';
 
 /** Deck profile shape mapped from the discovery API */
@@ -16,7 +16,9 @@ export type DeckProfile = DeckProfileModel & {
 /** Map discovery card → deck */
 export function mapDiscoveryToDeck(p: ApiDiscoveryProfile): DeckProfile {
   const photos = Array.isArray(p.photos) ? p.photos : [];
-  const urls = photos.map((x) => x?.url).filter(Boolean) as string[];
+  const urls = photos
+    .map((x) => resolveMediaUrl(x?.url))
+    .filter(Boolean) as string[];
   // No stock-photo fallback: photo-less profiles render initials in the deck
   const headUrl = urls[0] ?? '';
 

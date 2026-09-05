@@ -1,6 +1,7 @@
 import { StepShell } from '@/components/onboarding/StepShell';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
+import { Illustration } from '@/components/ui/illustration';
 import { Text } from '@/components/ui/text';
 import { ApiError, setOnboardingStep, updateInterests } from '@/lib/api/client';
 import { router, type Href } from 'expo-router';
@@ -69,6 +70,18 @@ export default function InterestsScreen() {
           </Button>
         }
       >
+        <View className="mb-4 flex-row items-center gap-3 rounded-card border-brutal border-fym-ink bg-fym-pastel-pink p-3">
+          <Illustration name="sprinkledDonut" size={36} />
+          <View className="flex-1">
+            <Text className="font-jakarta-bold text-xs uppercase tracking-wide text-fym-ink">
+              Your Flavors & Vibes
+            </Text>
+            <Text className="font-jakarta text-xs text-fym-text-muted">
+              Choose topics that genuinely excite you. Up to 12.
+            </Text>
+          </View>
+        </View>
+
         <View className="flex-row flex-wrap gap-2">
           {OPTIONS.map((label) => {
             const on = picked.includes(label);

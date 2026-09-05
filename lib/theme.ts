@@ -1,4 +1,4 @@
-import { DefaultTheme, type Theme } from '@react-navigation/native';
+import { DefaultTheme, type Theme } from 'expo-router';
 
 /** FYM navigation — linen paper + amber (not coral dating-app palette) */
 export const THEME = {

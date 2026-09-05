@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Illustration } from '@/components/ui/illustration';
 import { Text } from '@/components/ui/text';
+import { resolveMediaUrl } from '@/lib/api/client';
 import { clearSession, hasSession } from '@/lib/api/session';
 import {
   clearUserProfileLocal,
@@ -232,7 +234,7 @@ export default function SettingsScreen() {
           <View className="flex-row items-center gap-3">
             <View className="h-14 w-14 overflow-hidden rounded-full border-2 border-fym-ink">
               <Image
-                source={{ uri: profile.photo_url }}
+                source={{ uri: resolveMediaUrl(profile.photo_url) }}
                 style={{ width: '100%', height: '100%' }}
                 contentFit="cover"
               />
@@ -371,10 +373,13 @@ export default function SettingsScreen() {
 
         {/* Safety */}
         <View className="mt-6">
-          <Card brutal contentClassName="bg-fym-pastel-yellow/50 p-4">
-            <Text className="font-jakarta-extrabold text-sm uppercase text-fym-ink">
-              Safety center
-            </Text>
+          <Card brutal contentClassName="bg-fym-pastel-yellow p-4">
+            <View className="flex-row items-center gap-2">
+              <Illustration name="starShield" size={24} />
+              <Text className="font-jakarta-extrabold text-sm uppercase text-fym-ink">
+                Safety center
+              </Text>
+            </View>
             <Text className="mt-2 font-jakarta text-sm text-fym-text-muted">
               Report and block live inside every chat (tap the flag). For urgent cybercrime, use the
               national portal.

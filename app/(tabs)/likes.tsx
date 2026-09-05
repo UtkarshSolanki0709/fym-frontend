@@ -1,6 +1,7 @@
 import { ScreenEnter } from '@/components/motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Illustration } from '@/components/ui/illustration';
 import { Text } from '@/components/ui/text';
 import {
   ApiError,
@@ -11,7 +12,6 @@ import { hasSession } from '@/lib/api/session';
 import { Enter } from '@/lib/motion';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { Image } from 'expo-image';
-import { Lock } from 'lucide-react-native';
 import * as React from 'react';
 import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -111,11 +111,11 @@ export default function LikesScreen() {
           <>
             {/* Teaser: real count, zero fake photos */}
             <ScreenEnter variant="up" className="mt-8">
-              <Card contentClassName="items-center bg-fym-pastel-lavender/40 p-8">
-                <View className="h-12 w-12 items-center justify-center rounded-full border-brutal border-fym-ink bg-white">
-                  <Lock size={20} color="#14213D" />
+              <Card contentClassName="items-center bg-fym-pastel-lavender p-8">
+                <View className="mb-2 h-16 w-16 items-center justify-center rounded-card border-brutal border-fym-ink bg-white shadow-brutal">
+                  <Illustration name="lockedTreasureChest" size={44} />
                 </View>
-                <Text variant="h1" className="mt-4">
+                <Text variant="h1" className="mt-2">
                   {total}
                 </Text>
                 <Text variant="lead" className="text-center text-fym-ink">
@@ -128,6 +128,9 @@ export default function LikesScreen() {
             </ScreenEnter>
             <ScreenEnter variant="up" delayIndex={1} className="mt-6">
               <Card contentClassName="items-center bg-fym-pastel-pink p-6">
+                <View className="mb-2 h-12 w-12 items-center justify-center rounded-card border-brutal border-fym-ink bg-white shadow-brutal">
+                  <Illustration name="floatingGem" size={32} />
+                </View>
                 <Text variant="h3" className="text-center">
                   Level up to Plus
                 </Text>
@@ -153,6 +156,9 @@ export default function LikesScreen() {
         ) : (likes?.length ?? 0) === 0 ? (
           <ScreenEnter variant="up" className="mt-10">
             <Card contentClassName="items-center p-6">
+              <View className="mb-3 h-20 w-20 items-center justify-center rounded-card border-brutal border-fym-ink bg-fym-pastel-pink/30 shadow-brutal">
+                <Illustration name="heartPoolFloat" size={60} />
+              </View>
               <Text variant="h3" className="text-center">
                 No likes yet
               </Text>

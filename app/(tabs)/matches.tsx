@@ -1,5 +1,6 @@
 import { ScreenEnter } from '@/components/motion';
 import { Card } from '@/components/ui/card';
+import { Illustration } from '@/components/ui/illustration';
 import { Text } from '@/components/ui/text';
 import { getMatches } from '@/lib/api/client';
 import { decryptPreview, ensurePublishedKeys } from '@/lib/chat/useChat';
@@ -144,9 +145,19 @@ export default function MatchesScreen() {
           </ScreenEnter>
 
           {newMatches.length === 0 ? (
-            <Text className="mt-3 font-jakarta text-sm text-fym-text-muted">
-              Mutual likes show up here first.
-            </Text>
+            <Card contentClassName="flex-row items-center gap-3.5 p-4 mt-3 bg-fym-pastel-blue">
+              <View className="h-12 w-12 items-center justify-center rounded-card border-brutal border-fym-ink bg-white shadow-brutal">
+                <Illustration name="messageInABottle" size={32} />
+              </View>
+              <View className="flex-1">
+                <Text className="font-jakarta-bold text-xs uppercase tracking-wide text-fym-ink">
+                  Awaiting Signals
+                </Text>
+                <Text className="font-jakarta text-xs text-fym-text-muted">
+                  Mutual likes show up here first. Send a like from Discover to start.
+                </Text>
+              </View>
+            </Card>
           ) : (
             <ScrollView
               horizontal
@@ -188,9 +199,19 @@ export default function MatchesScreen() {
 
           <View className="mt-3 gap-4">
             {convos.length === 0 ? (
-              <Text className="font-jakarta text-sm text-fym-text-muted">
-                When you match, chats show up here.
-              </Text>
+              <Card contentClassName="flex-row items-center gap-3.5 p-4 bg-fym-pastel-green">
+                <View className="h-12 w-12 items-center justify-center rounded-card border-brutal border-fym-ink bg-white shadow-brutal">
+                  <Illustration name="pottedMonsteraPlant" size={32} />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-jakarta-bold text-xs uppercase tracking-wide text-fym-ink">
+                    Quiet Garden
+                  </Text>
+                  <Text className="font-jakarta text-xs text-fym-text-muted">
+                    When you match with someone, your private chats will bloom here.
+                  </Text>
+                </View>
+              </Card>
             ) : (
               convos.map((m) => (
                 <Pressable key={m.room_id} onPress={() => open(m)}>

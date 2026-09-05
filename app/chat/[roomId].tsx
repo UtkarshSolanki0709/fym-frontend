@@ -2,6 +2,7 @@ import { MessageList } from '@/components/chat/MessageList';
 import { useScreenGuard } from '@/components/chat/useScreenGuard';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
+import { Illustration } from '@/components/ui/illustration';
 import { Text } from '@/components/ui/text';
 import {
   ApiError,
@@ -338,6 +339,18 @@ function ChatBody({
       ) : error ? (
         <View className="flex-1 items-center justify-center px-edge">
           <Text className="text-center font-jakarta-bold text-sm text-red-600">{error}</Text>
+        </View>
+      ) : messages.length === 0 ? (
+        <View className="flex-1 items-center justify-center px-edge">
+          <View className="mb-4 items-center justify-center rounded-card border-brutal border-fym-ink bg-white p-6 shadow-brutal">
+            <Illustration name="roseInVase" size={80} />
+          </View>
+          <Text variant="h3" className="text-center text-fym-ink">
+            Mutual Match
+          </Text>
+          <Text variant="caption" className="mt-2 max-w-[260px] text-center text-fym-text-muted">
+            Say hi to {peerName}! Start with a question about their prompts or mutual interests.
+          </Text>
         </View>
       ) : (
         <View className="flex-1">

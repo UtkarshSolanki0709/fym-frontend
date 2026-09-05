@@ -47,15 +47,17 @@ function Card({
       className={cn(!brutal && 'rounded-card', className)}
       {...props}
     >
-      <View
-        className={cn(
-          'overflow-hidden border bg-white',
-          brutal ? 'border-brutal border-fym-ink' : 'rounded-card border-border',
-          contentClassName
-        )}
-        style={radiusStyle}
-      >
-        {children}
+      <View style={[{ backgroundColor: '#FFFFFF' }, radiusStyle]}>
+        <View
+          className={cn(
+            'overflow-hidden border bg-white',
+            brutal ? 'border-brutal border-fym-ink' : 'rounded-card border-border',
+            contentClassName
+          )}
+          style={radiusStyle}
+        >
+          {children}
+        </View>
       </View>
     </Shadow>
   );

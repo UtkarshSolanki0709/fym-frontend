@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
+import { Illustration } from '@/components/ui/illustration';
 import { Text } from '@/components/ui/text';
 import { ApiError, submitGrievance } from '@/lib/api/client';
 import { hasSession } from '@/lib/api/session';
@@ -83,10 +84,13 @@ export default function GrievanceScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerClassName="px-edge py-5 pb-24" showsVerticalScrollIndicator={false}>
-          <Card brutal contentClassName="bg-fym-pastel-yellow/50 p-4">
-            <Text className="font-jakarta-extrabold text-sm uppercase text-fym-ink">
-              Grievance Officer
-            </Text>
+          <Card brutal contentClassName="bg-fym-pastel-yellow p-4">
+            <View className="flex-row items-center gap-2.5">
+              <Illustration name="flickeringCandle" size={24} />
+              <Text className="font-jakarta-extrabold text-sm uppercase text-fym-ink">
+                Grievance Officer
+              </Text>
+            </View>
             <Text className="mt-2 font-jakarta text-sm text-fym-text-muted">
               {OFFICER_NAME || 'Our Grievance Officer'} handles complaints under the IT Rules, 2021
               and the DPDP Act.

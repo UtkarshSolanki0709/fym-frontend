@@ -1,5 +1,6 @@
 import { ScreenEnter } from '@/components/motion';
 import { Button } from '@/components/ui/button';
+import { Illustration } from '@/components/ui/illustration';
 import { Shadow } from '@/components/ui/shadow';
 import { Text } from '@/components/ui/text';
 import { signInWithGoogle } from '@/lib/auth/googleOAuth';
@@ -33,31 +34,35 @@ export default function WelcomeScreen() {
   return (
     <View
       className="flex-1 bg-fym-surface px-edge"
-      style={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }}
+      style={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }}
     >
       <StatusBar style="dark" />
 
-      <ScreenEnter variant="down" className="mt-8 items-center text-center">
+      <ScreenEnter variant="down" className="mt-4 items-center text-center">
         <Shadow offset={6} className="rounded-card">
           <Image
             source={require('@/assets/images/logo.png')}
-            className="w-24 h-24"
+            className="w-20 h-20"
             contentFit="contain"
           />
         </Shadow>
-        <Text variant="display" className="mt-8 text-center text-fym-ink">
+        <Text variant="display" className="mt-4 text-center text-fym-ink">
           Meet someone{'\n'}worth a{' '}
           <Text variant="display" className="text-fym-brand">
             second coffee
           </Text>
           .
         </Text>
-        <Text variant="lead" className="mt-4 max-w-[300px] text-center">
+        <Text variant="lead" className="mt-2 max-w-[300px] text-center">
           Browse real profiles, say what didn&apos;t click, and chat without an audience.
         </Text>
       </ScreenEnter>
 
-      <View className="flex-1" />
+      <ScreenEnter variant="fade" delayIndex={1} className="my-auto items-center">
+        <View className="items-center justify-center rounded-card border-brutal border-fym-ink bg-fym-pastel-pink p-4">
+          <Illustration name="loveseat" size={105} />
+        </View>
+      </ScreenEnter>
 
       <ScreenEnter variant="up" delayIndex={3} className="mt-8 gap-3">
         {error ? (
