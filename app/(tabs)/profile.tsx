@@ -1,11 +1,14 @@
 import { ScreenEnter } from '@/components/motion';
 import { Button } from '@/components/ui/button';
+import { CachedImage } from '@/components/ui/cached-image';
 import { Card } from '@/components/ui/card';
 import { Illustration } from '@/components/ui/illustration';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
+import { VerifiedTick } from '@/components/ui/verified-tick';
 import { ApiError, deletePhoto, resolveMediaUrl, uploadPhoto } from '@/lib/api/client';
 import { hasSession } from '@/lib/api/session';
+import { cacheLocalCopy } from '@/lib/media/photoCache';
 import {
   getUserProfile,
   loadUserProfile,
@@ -17,7 +20,6 @@ import {
   type ProfilePrompt,
   type UserProfile,
 } from '@/lib/userProfile';
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -117,6 +119,8 @@ export default function ProfileScreen() {
             }
           }
           next = { id: uploaded.id, url: resolveMediaUrl(uploaded.url) };
+          // Zero-latency first render: keep the picked asset in the media cache
+          void cacheLocalCopy(asset.uri, next.url);
         } catch (e) {
           Alert.alert(
             'Upload failed',
@@ -157,6 +161,7 @@ export default function ProfileScreen() {
         try {
           const uploaded = await uploadPhoto(asset.base64);
           item = { id: uploaded.id, url: resolveMediaUrl(uploaded.url) };
+          void cacheLocalCopy(asset.uri, item.url);
         } catch {
           item = { id: `local-${Date.now()}`, url: asset.uri };
         }
@@ -287,8 +292,8 @@ export default function ProfileScreen() {
               className="h-28 w-28 overflow-hidden rounded-full border-brutal border-fym-ink"
               style={brutalShadow}
             >
-              <Image
-                source={{ uri: resolveMediaUrl(profile.photo_url) }}
+              <CachedImage
+                url={profile.photo_url}
                 style={{ width: '100%', height: '100%' }}
                 contentFit="cover"
               />
@@ -308,10 +313,13 @@ export default function ProfileScreen() {
               <Edit3 size={16} color={INK} />
             </Pressable>
           </View>
-          <Text className="font-display-extrabold text-2xl tracking-tight text-fym-ink">
-            {profile.display_name}
-            {profile.age != null ? `, ${profile.age}` : ''}
-          </Text>
+          <View className="flex-row items-center justify-center gap-1.5">
+            <Text className="font-display-extrabold text-2xl tracking-tight text-fym-ink">
+              {profile.display_name}
+              {profile.age != null ? `, ${profile.age}` : ''}
+            </Text>
+            {profile.is_verified ? <VerifiedTick size={20} /> : null}
+          </View>
           <Text className="mt-1 font-jakarta text-sm text-fym-text-muted">
             {profile.bio || profile.location || 'Add a bio from Edit details'}
           </Text>
@@ -339,7 +347,6 @@ export default function ProfileScreen() {
           ) : null}
           <View className="flex-row flex-wrap gap-3">
             {photos.map((p, i) => {
-              const photoUri = resolveMediaUrl(p.url);
               const photoKey = p.id ? `${p.id}-${i}` : `photo-${i}`;
               return (
                 <View
@@ -349,13 +356,12 @@ export default function ProfileScreen() {
                 >
                   <Pressable onPress={() => void replacePhoto(i)} accessibilityLabel="Replace photo">
                     <View className="relative aspect-[3/4] w-full bg-slate-100">
-                      {photoUri ? (
-                        <Image
-                          source={{ uri: photoUri }}
-                          style={{ width: '100%', height: '100%' }}
-                          contentFit="cover"
-                        />
-                      ) : null}
+                      <CachedImage
+                        url={p.url}
+                        style={{ width: '100%', height: '100%' }}
+                        contentFit="cover"
+                        accessibilityLabel={`Profile photo ${i + 1}`}
+                      />
                       {i === 0 ? (
                         <View className="absolute left-1 top-1 rounded-pill bg-fym-coral px-2 py-0.5">
                           <Text className="font-jakarta-bold text-[9px] uppercase text-white">

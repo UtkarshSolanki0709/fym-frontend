@@ -6,6 +6,7 @@ import { getOnboardingStatus } from '@/lib/api/client';
 import { saveSession } from '@/lib/api/session';
 import { ensurePublishedKeys } from '@/lib/chat/useChat';
 import { loadUserProfile } from '@/lib/userProfile';
+import { resumeRouteForStep } from '@/lib/onboarding';
 import { supabase } from '@/lib/supabase';
 import { router, type Href } from 'expo-router';
 
@@ -103,10 +104,7 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
     console.warn('Failed to fetch onboarding status from backend:', e);
   }
 
-  if (status?.onboarding_step === 'complete') {
-    router.replace('/(tabs)/discovery' as Href);
-  } else {
-    router.replace('/(onboarding)/basic-info' as Href);
-  }
+  // Resume at the screen the user left off — same map as the cold-start gate
+  router.replace(resumeRouteForStep(status?.onboarding_step) as Href);
   return { ok: true };
 }

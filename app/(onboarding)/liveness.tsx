@@ -141,6 +141,16 @@ export default function LivenessScreen() {
     }
   };
 
+  const skip = async () => {
+    if (busy || analyzing) return;
+    try {
+      await setOnboardingStep('liveness_skipped');
+      router.push('/(onboarding)/interests' as Href);
+    } catch {
+      setError('Could not save — try again');
+    }
+  };
+
   if (!permission) {
     return (
       <View className="flex-1 items-center justify-center bg-fym-surface">
@@ -189,9 +199,14 @@ export default function LivenessScreen() {
               <Text>Verifying…</Text>
             </Button>
           ) : done ? null : (
-            <Button size="lg" onPress={capture} disabled={analyzing}>
-              <Text>{analyzing ? 'Checking…' : `Capture ${frames.length + 1} of 3`}</Text>
-            </Button>
+            <View className="gap-2">
+              <Button size="lg" onPress={capture} disabled={analyzing}>
+                <Text>{analyzing ? 'Checking…' : `Capture ${frames.length + 1} of 3`}</Text>
+              </Button>
+              <Button variant="ghost" onPress={skip} disabled={analyzing}>
+                <Text>Skip for now — you can verify later</Text>
+              </Button>
+            </View>
           )
         }
       >

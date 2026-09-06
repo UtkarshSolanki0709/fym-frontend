@@ -9,6 +9,7 @@ import {
   updatePrompts as apiUpdatePrompts,
 } from '@/lib/api/client';
 import { hasSession } from '@/lib/api/session';
+import { primeMedia } from '@/lib/media/photoCache';
 import { storageGet, storageRemove, storageSet } from '@/lib/storage';
 
 const KEY = 'fym.user_profile';
@@ -27,6 +28,8 @@ export type UserProfile = {
   photo_url: string;
   photos: ProfilePhoto[];
   prompts: ProfilePrompt[];
+  /** Set only by a passed live face check — drives the verified badge */
+  is_verified: boolean;
 };
 
 export type UserPrefs = {
@@ -58,6 +61,7 @@ const DEFAULT_PROFILE: UserProfile = {
   photo_url: '',
   photos: DEFAULT_PHOTOS,
   prompts: DEFAULT_PROMPTS,
+  is_verified: false,
 };
 
 const DEFAULT_PREFS: UserPrefs = {
@@ -179,8 +183,12 @@ export async function loadUserProfile(): Promise<UserProfile> {
                 }))
               : profile.prompts,
           email: String((me as { email?: string }).email ?? profile.email),
+          is_verified: Boolean((me as { is_verified?: boolean }).is_verified),
         });
         await persistProfile();
+        // Warm the on-device media cache in the background — first render of
+        // these photos later hits file:// instead of a signed-URL round trip
+        primeMedia(photos.map((p) => p.url));
       } catch {
         // offline / demo
       }

@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Shadow } from '@/components/ui/shadow';
 import { Stamp } from '@/components/ui/stamp';
+import { VerifiedTick } from '@/components/ui/verified-tick';
 import { Text } from '@/components/ui/text';
 import {
   buildShuffledHand,
@@ -205,9 +206,12 @@ function ProfileDeck({
                         ) : null}
                       </View>
                       <View className="border-t border-border bg-[#FCF9F6] px-4 py-3">
-                        <Text variant="h2" className="text-fym-text">
-                          {profile.displayName}, {profile.age}
-                        </Text>
+                        <View className="flex-row items-center gap-1.5">
+                          <Text variant="h2" className="flex-1 text-fym-text">
+                            {profile.displayName}, {profile.age}
+                          </Text>
+                          {profile.verified ? <VerifiedTick size={20} /> : null}
+                        </View>
                         <Text variant="caption" className="mt-0.5 text-fym-text-muted">
                           {dealt
                             ? 'Tap a card to reveal · skip below'

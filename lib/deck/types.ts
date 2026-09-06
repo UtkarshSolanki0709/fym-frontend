@@ -10,6 +10,8 @@ export type DeckProfileModel = {
   distanceKm: number;
   vibe: string;
   headUrl: string;
+  /** Passed the live face check — renders the verified tick on the ace card */
+  verified?: boolean;
   media: Extract<ProfileCard, { type: 'media' }>[];
   prompts: Extract<ProfileCard, { type: 'prompt' }>[];
 };

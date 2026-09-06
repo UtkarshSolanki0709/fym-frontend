@@ -1,10 +1,11 @@
 import { StepShell } from '@/components/onboarding/StepShell';
 import { Button } from '@/components/ui/button';
+import { CachedImage } from '@/components/ui/cached-image';
 import { Text } from '@/components/ui/text';
 import { ApiError, deletePhoto, resolveMediaUrl, setOnboardingStep, uploadPhoto } from '@/lib/api/client';
+import { cacheLocalCopy } from '@/lib/media/photoCache';
 import { loadUserProfile, setPhotos as persistProfilePhotos } from '@/lib/userProfile';
 import * as ImagePicker from 'expo-image-picker';
-import { Image } from 'expo-image';
 import { router, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { X } from 'lucide-react-native';
@@ -27,7 +28,9 @@ export default function PhotosScreen() {
     loadUserProfile()
       .then((p) => {
         if (p.photos && p.photos.length > 0) {
-          const real = p.photos.filter((x) => !x.id.startsWith('demo-'));
+          const real = p.photos.filter(
+            (x) => x.id && !x.id.startsWith('demo-') && x.url,
+          );
           if (real.length > 0) {
             setPhotos(
               real.map((x) => ({
@@ -62,6 +65,8 @@ export default function PhotosScreen() {
     try {
       const res = await uploadPhoto(base64);
       const uploadedUrl = resolveMediaUrl(res.url);
+      // Zero-latency first render later: keep the picked asset in the media cache
+      void cacheLocalCopy(localUri, uploadedUrl);
       setPhotos((prev) =>
         prev.map((p) =>
           p.id === tempId
@@ -134,8 +139,8 @@ export default function PhotosScreen() {
         <View className="flex-row flex-wrap gap-3">
           {photos.map((p, i) => (
             <View key={p.id} className="relative h-28 w-[30%] overflow-hidden rounded-card border border-border bg-slate-100">
-              <Image
-                source={{ uri: p.localUri || resolveMediaUrl(p.url) }}
+              <CachedImage
+                url={p.localUri || p.url}
                 style={{ width: '100%', height: '100%' }}
                 contentFit="cover"
                 transition={200}

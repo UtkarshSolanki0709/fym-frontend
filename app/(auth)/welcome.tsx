@@ -1,6 +1,5 @@
 import { ScreenEnter } from '@/components/motion';
 import { Button } from '@/components/ui/button';
-import { Illustration } from '@/components/ui/illustration';
 import { Shadow } from '@/components/ui/shadow';
 import { Text } from '@/components/ui/text';
 import { signInWithGoogle } from '@/lib/auth/googleOAuth';
@@ -60,7 +59,13 @@ export default function WelcomeScreen() {
 
       <ScreenEnter variant="fade" delayIndex={1} className="my-auto items-center">
         <View className="items-center justify-center rounded-card border-brutal border-fym-ink bg-fym-pastel-pink p-4">
-          <Illustration name="loveseat" size={105} />
+          <View className="overflow-hidden rounded-2xl">
+            <Image
+              source={require('@/assets/images/fym-logo-dark.png')}
+              className="h-28 w-28"
+              contentFit="cover"
+            />
+          </View>
         </View>
       </ScreenEnter>
 

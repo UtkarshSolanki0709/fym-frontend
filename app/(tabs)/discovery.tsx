@@ -12,7 +12,7 @@ import {
   swipeSuperlike,
 } from '@/lib/api/client';
 import { hasSession } from '@/lib/api/session';
-import { mapDiscoveryToDeck, type DeckProfile } from '@/lib/api/mapProfile';
+import { mapDiscoveryToDeckCached, type DeckProfile } from '@/lib/api/mapProfile';
 import { Enter } from '@/lib/motion';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { router, type Href } from 'expo-router';
@@ -67,7 +67,9 @@ export default function DiscoveryScreen() {
         return;
       }
       const data = await fetchDiscovery();
-      const mapped = (data.profiles ?? []).map(mapDiscoveryToDeck);
+      const mapped = await Promise.all(
+        (data.profiles ?? []).map(mapDiscoveryToDeckCached),
+      );
       setProfiles(mapped);
       setRemaining(data.remaining_today);
       setIndex(0);
@@ -98,14 +100,18 @@ export default function DiscoveryScreen() {
       const next = i + 1;
       if (next >= profiles.length - 2) {
         void fetchDiscovery()
-          .then((data) => {
-            const mapped = (data.profiles ?? []).map(mapDiscoveryToDeck);
+          .then((data) =>
+            Promise.all((data.profiles ?? []).map(mapDiscoveryToDeckCached)).then(
+              (mapped) => ({ mapped, remaining: data.remaining_today }),
+            ),
+          )
+          .then(({ mapped, remaining }) => {
             if (mapped.length) {
               setProfiles((prev) => {
                 const seen = new Set(prev.map((p) => p.id));
                 return [...prev, ...mapped.filter((p) => !seen.has(p.id))];
               });
-              setRemaining(data.remaining_today);
+              setRemaining(remaining);
             }
           })
           .catch(() => undefined);
